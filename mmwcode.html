@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PathFindr - NEU Floor Blueprint Navigation</title>
+  <style>
+    :root {
+      --primary: #002B49;
+      --accent: #D4AF37;
+      --bg: #F4F6F9;
+      --card-bg: #FFFFFF;
+      --text: #1E293B;
+      --muted: #64748B;
+      --border: #CBD5E1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 20px; }
+    
+    .header { text-align: center; margin-bottom: 24px; padding: 20px; background: var(--primary); color: white; border-radius: 12px; }
+    .header h1 { font-size: 2rem; color: var(--accent); margin-bottom: 6px; }
+
+    .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; max-width: 1300px; margin: 0 auto; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .card h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+    select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.95rem; }
+
+    .btn { width: 100%; padding: 12px; background: var(--accent); color: var(--primary); font-weight: bold; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .btn:hover { background: #c29d2b; }
+
+    .floor-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .floor-btn { flex: 1; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; text-align: center; }
+    .floor-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .results-box { background: #F8FAFC; border: 1px dashed var(--accent); border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .metric { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
+    .path-flow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+    .node-chip { background: var(--primary); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; }
+    .arrow { color: var(--accent); font-weight: bold; }
+
+    .map-container { position: relative; width: 100%; height: 420px; background: #0A192F; border-radius: 8px; overflow: hidden; border: 2px solid var(--primary); }
+    svg { width: 100%; height: 100%; }
+
+    /* SVG Floor Blueprint Styling */
+    .blueprint-wall { fill: none; stroke: #1E293B; stroke-width: 8; }
+    .blueprint-room { fill: #112240; stroke: #233554; stroke-width: 2; }
+    .blueprint-label { fill: #8892B0; font-size: 12px; font-weight: bold; text-anchor: middle; }
+
+    .svg-edge { stroke: #334155; stroke-width: 3; stroke-dasharray: 4; }
+    .svg-edge.active-path { stroke: var(--accent); stroke-width: 5; stroke-dasharray: 0; }
+    
+    .svg-node circle { fill: #002B49; stroke: var(--accent); stroke-width: 2; }
+    .svg-node.selected circle { fill: var(--accent); stroke: #FFF; stroke-width: 3; }
+    .svg-node text { fill: #F8FAFC; font-size: 11px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>PathFindr</h1>
+    <p>NEU Main Building Floor Blueprint Navigation System</p>
+  </div>
+
+  <div class="grid">
+    <!-- CONTROLS -->
+    <div class="card">
+      <h2>Select Route</h2>
+      <div class="form-group">
+        <label for="startNode">Starting Location (Origin):</label>
+        <select id="startNode" onchange="calculateRoute()"></select>
+      </div>
+      <div class="form-group">
+        <label for="endNode">Destination Point:</label>
+        <select id="endNode" onchange="calculateRoute()"></select>
+      </div>
+
+      <div class="results-box" id="resultsBox">
+        <div class="metric">
+          <span>Total Walking Distance:</span>
+          <span id="distVal" style="color: var(--accent);">0 m</span>
+        </div>
+        <div class="metric">
+          <span>Est. Walk Time:</span>
+          <span id="timeVal">0 mins</span>
+        </div>
+        <label style="margin-top: 10px;">Calculated Path:</label>
+        <div class="path-flow" id="pathFlow"></div>
+      </div>
+    </div>
+
+    <!-- MAP DISPLAY -->
+    <div class="card">
+      <h2>NEU Building Map View</h2>
+      <div class="floor-tabs">
+        <button class="floor-btn active" id="btn-1st" onclick="switchFloor('1st')">1st Floor</button>
+        <button class="floor-btn" id="btn-2nd" onclick="switchFloor('2nd')">2nd Floor</button>
+        <button class="floor-btn" id="btn-3rd" onclick="switchFloor('3rd')">3rd Floor</button>
+        <button class="floor-btn" id="btn-4th" onclick="switchFloor('4th')">4th Floor</button>
+      </div>
+
+      <div class="map-container">
+        <svg id="blueprintSvg" viewBox="0 0 700 400">
+          <g id="blueprintGroup"></g>
+          <g id="edgesGroup"></g>
+          <g id="nodesGroup"></g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const nodes = [
+      // 1st Floor
+      { id: 0, name: "Quadrangle", floor: "1st", x: 150, y: 250 },
+      { id: 1, name: "Canteen", floor: "1st", x: 350, y: 250 },
+      { id: 2, name: "Bookstore", floor: "1st", x: 550, y: 250 },
+
+      // 2nd Floor
+      { id: 3, name: "Cashier", floor: "2nd", x: 150, y: 200 },
+      { id: 4, name: "Clinic", floor: "2nd", x: 350, y: 200 },
+      { id: 5, name: "Multi-Purpose Hall (MPH)", floor: "2nd", x: 550, y: 200 },
+
+      // 3rd Floor
+      { id: 6, name: "College of Arts & Sciences", floor: "3rd", x: 350, y: 180 },
+
+      // 4th Floor
+      { id: 7, name: "Univ Hall", floor: "4th", x: 150, y: 150 },
+      { id: 8, name: "Office of Student Discipline", floor: "4th", x: 350, y: 150 },
+      { id: 9, name: "Basketball Court", floor: "4th", x: 550, y: 150 }
+    ];
+
+    const edges = [
+      { from: 0, to: 1, dist: 35 },
+      { from: 1, to: 2, dist: 40 },
+      { from: 0, to: 3, dist: 20 }, // Stairs 1st-2nd
+      { from: 3, to: 4, dist: 25 },
+      { from: 4, to: 5, dist: 30 },
+      { from: 4, to: 6, dist: 20 }, // Stairs 2nd-3rd
+      { from: 6, to: 8, dist: 20 }, // Stairs 3rd-4th
+      { from: 7, to: 8, dist: 30 },
+      { from: 8, to: 9, dist: 35 },
+      { from: 2, to: 5, dist: 22 }  // Rear Stairs 1st-2nd
+    ];
+
+    let currentActiveFloor = "1st";
+    let activePathEdges = [];
+
+    function init() {
+      const sSelect = document.getElementById('startNode');
+      const eSelect = document.getElementById('endNode');
+
+      nodes.forEach(n => {
+        sSelect.innerHTML += `<option value="${n.id}">[${n.floor} Flr] ${n.name}</option>`;
+        eSelect.innerHTML += `<option value="${n.id}">[${n.floor} Flr] ${n.name}</option>`;
+      });
+
+      eSelect.selectedIndex = 7;
+      calculateRoute();
+    }
+
+    function switchFloor(floor) {
+      currentActiveFloor = floor;
+      document.querySelectorAll('.floor-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`btn-${floor}`).classList.add('active');
+      renderMap();
+    }
+
+    function renderMap() {
+      renderBlueprintLayout(currentActiveFloor);
+      renderGraph(currentActiveFloor);
+    }
+
+    function renderBlueprintLayout(floor) {
+      const bg = document.getElementById('blueprintGroup');
+      bg.innerHTML = '';
+
+      bg.innerHTML += `<rect x="50" y="50" width="600" height="300" class="blueprint-wall" />`;
+
+      if (floor === '1st') {
+        bg.innerHTML += `
+          <rect x="70" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="150" y="120" class="blueprint-label">QUADRANGLE</text>
+
+          <rect x="270" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="350" y="120" class="blueprint-label">CANTEEN</text>
+
+          <rect x="470" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="550" y="120" class="blueprint-label">BOOKSTORE</text>
+        `;
+      } else if (floor === '2nd') {
+        bg.innerHTML += `
+          <rect x="70" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="150" y="120" class="blueprint-label">CASHIER</text>
+
+          <rect x="270" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="350" y="120" class="blueprint-label">CLINIC</text>
+
+          <rect x="470" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="550" y="120" class="blueprint-label">MULTI-PURPOSE HALL</text>
+        `;
+      } else if (floor === '3rd') {
+        bg.innerHTML += `
+          <rect x="150" y="70" width="400" height="260" class="blueprint-room"/>
+          <text x="350" y="120" class="blueprint-label">COLLEGE OF ARTS & SCIENCES</text>
+        `;
+      } else if (floor === '4th') {
+        bg.innerHTML += `
+          <rect x="70" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="150" y="120" class="blueprint-label">UNIV HALL</text>
+
+          <rect x="270" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="350" y="120" class="blueprint-label">STUDENT DISCIPLINE</text>
+
+          <rect x="470" y="70" width="160" height="260" class="blueprint-room"/>
+          <text x="550" y="120" class="blueprint-label">BASKETBALL COURT</text>
+        `;
+      }
+    }
+
+    function renderGraph(floor) {
+      const eg = document.getElementById('edgesGroup');
+      const ng = document.getElementById('nodesGroup');
+      eg.innerHTML = '';
+      ng.innerHTML = '';
+
+      const floorNodes = nodes.filter(n => n.floor === floor);
+
+      edges.forEach(e => {
+        const u = nodes.find(n => n.id === e.from);
+        const v = nodes.find(n => n.id === e.to);
+
+        if (u.floor === floor && v.floor === floor) {
+          const isHL = activePathEdges.some(he => 
+            (he.from === e.from && he.to === e.to) || (he.from === e.to && he.to === e.from)
+          );
+
+          eg.innerHTML += `<line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}" class="svg-edge ${isHL ? 'active-path' : ''}" />`;
+        }
+      });
+
+      floorNodes.forEach(n => {
+        const isPath = activePathEdges.some(pe => pe.from === n.id || pe.to === n.id);
+        ng.innerHTML += `
+          <g class="svg-node ${isPath ? 'selected' : ''}">
+            <circle cx="${n.x}" cy="${n.y}" r="12" />
+            <text x="${n.x}" y="${n.y + 26}" text-anchor="middle">${n.name}</text>
+          </g>
+        `;
+      });
+    }
+
+    function calculateRoute() {
+      const start = parseInt(document.getElementById('startNode').value);
+      const end = parseInt(document.getElementById('endNode').value);
+
+      let distances = {};
+      let previous = {};
+      let unvisited = new Set();
+
+      nodes.forEach(n => {
+        distances[n.id] = Infinity;
+        previous[n.id] = null;
+        unvisited.add(n.id);
+      });
+
+      distances[start] = 0;
+
+      while (unvisited.size > 0) {
+        let curr = null;
+        let minD = Infinity;
+
+        unvisited.forEach(id => {
+          if (distances[id] < minD) {
+            minD = distances[id];
+            curr = id;
+          }
+        });
+
+        if (curr === null || curr === end) break;
+        unvisited.delete(curr);
+
+        const neighbors = edges.filter(e => e.from === curr || e.to === curr);
+        neighbors.forEach(e => {
+          const neighborId = e.from === curr ? e.to : e.from;
+          if (unvisited.has(neighborId)) {
+            const alt = distances[curr] + e.dist;
+            if (alt < distances[neighborId]) {
+              distances[neighborId] = alt;
+              previous[neighborId] = curr;
+            }
+          }
+        });
+      }
+
+      let path = [];
+      let curr = end;
+      while (curr !== null) {
+        path.unshift(curr);
+        curr = previous[curr];
+      }
+
+      document.getElementById('distVal').textContent = `${distances[end]} meters`;
+      const mins = Math.ceil((distances[end] / 1.2) / 60);
+      document.getElementById('timeVal').textContent = `~${mins} min`;
+
+      const pathFlow = document.getElementById('pathFlow');
+      pathFlow.innerHTML = '';
+      activePathEdges = [];
+
+      path.forEach((nodeId, idx) => {
+        const n = nodes.find(item => item.id === nodeId);
+        pathFlow.innerHTML += `<span class="node-chip">${n.name} (${n.floor})</span>`;
+        if (idx < path.length - 1) {
+          pathFlow.innerHTML += `<span class="arrow">➔</span>`;
+          activePathEdges.push({ from: nodeId, to: path[idx + 1] });
+        }
+      });
+
+      const startFloor = nodes.find(n => n.id === start).floor;
+      switchFloor(startFloor);
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
