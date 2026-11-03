@@ -135,17 +135,18 @@
       { id: 9, name: "Basketball Court", floor: "4th", x: 550, y: 150 }
     ];
 
+    // Actual converted distance measurements (meters) based on field survey
     const edges = [
-      { from: 0, to: 1, dist: 35 },
-      { from: 1, to: 2, dist: 40 },
-      { from: 0, to: 3, dist: 20 }, // Stairs 1st-2nd
-      { from: 3, to: 4, dist: 25 },
-      { from: 4, to: 5, dist: 30 },
-      { from: 4, to: 6, dist: 20 }, // Stairs 2nd-3rd
-      { from: 6, to: 8, dist: 20 }, // Stairs 3rd-4th
-      { from: 7, to: 8, dist: 30 },
-      { from: 8, to: 9, dist: 35 },
-      { from: 2, to: 5, dist: 22 }  // Rear Stairs 1st-2nd
+      { from: 0, to: 1, dist: 30.0 },  // Quad -> Canteen
+      { from: 1, to: 2, dist: 52.5 },  // Canteen -> Bookstore
+      { from: 0, to: 3, dist: 36.65 }, // Quad -> Cashier (Stairs)
+      { from: 3, to: 4, dist: 26.25 }, // Cashier -> Clinic
+      { from: 4, to: 5, dist: 81.0 },  // Clinic -> MPH
+      { from: 2, to: 5, dist: 29.15 }, // Bookstore -> MPH (Rear Stairs)
+      { from: 4, to: 6, dist: 86.15 }, // Clinic -> CAS (Stairs)
+      { from: 6, to: 8, dist: 67.4 },  // CAS -> OSD (Stairs)
+      { from: 7, to: 8, dist: 45.0 },  // Univ Hall -> OSD
+      { from: 8, to: 9, dist: 75.0 }   // OSD -> Basketball Court
     ];
 
     let currentActiveFloor = "1st";
@@ -305,7 +306,8 @@
         curr = previous[curr];
       }
 
-      document.getElementById('distVal').textContent = `${distances[end]} meters`;
+      const totalMeters = distances[end].toFixed(1);
+      document.getElementById('distVal').textContent = `${totalMeters} meters`;
       const mins = Math.ceil((distances[end] / 1.2) / 60);
       document.getElementById('timeVal').textContent = `~${mins} min`;
 
