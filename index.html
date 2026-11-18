@@ -83,18 +83,18 @@
         <span><i class="dot" style="background:#22C55E"></i> Start Location</span>
         <span><i class="dot" style="background:#EF4444"></i> Destination</span>
         <span><i class="dot" style="background:#38BDF8"></i> Waypoint / Room</span>
-        <span><i class="dot" style="background:#FACC15"></i> Shortest Path</span>
+        <span><i class="dot" style="background:#FACC15"></i> Shortest Path &amp; Stairs</span>
       </div>
     </div>
   </div>
 
   <script>
-    // Final calibrated node coordinates matching NEU Main Building schematic
+    // Calibrated node positions: Cashier on inner rectangle bottom-left vertex (320, 360), MPH on leftest outer border (110, 270)
     const nodes = [
       { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.35, y: 0.50 },
       { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.52, y: 0.50 },
       { id: 2, name: "Node 2: Bookstore / Shop-5", floor: 1, x: 0.14, y: 0.72 },
-      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.1146, y: 0.7963 },
+      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.3333, y: 0.6667 },
       { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.50, y: 0.50 },
       { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.1146, y: 0.50 },
       { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.76, y: 0.72 },
@@ -181,6 +181,35 @@
       setFloor(nodes[start].floor);
     }
 
+    function drawStairConnector(ctx, fromX, fromY, toX, toY, labelText) {
+      // Draw yellow line leading to stairwell transition point
+      ctx.strokeStyle = '#FACC15';
+      ctx.lineWidth = 4.5;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw stairwell marker badge
+      ctx.beginPath();
+      ctx.arc(toX, toY, 7, 0, Math.PI * 2);
+      ctx.fillStyle = '#FACC15';
+      ctx.fill();
+      ctx.strokeStyle = '#0B192C';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      const w = ctx.measureText(labelText).width;
+      ctx.fillStyle = '#FACC15';
+      ctx.fillRect(toX - w / 2 - 6, toY + 12, w + 12, 18);
+      ctx.fillStyle = '#0B192C';
+      ctx.fillText(labelText, toX, toY + 25);
+    }
+
     function drawMap() {
       const canvas = document.getElementById('mapCanvas');
       const ctx = canvas.getContext('2d');
@@ -195,17 +224,17 @@
       for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
       for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-      // Main Building Outline (Left Wing, Center, Right Wing)
+      // Main Outer Building Rectangle (110..850, 110..430)
       ctx.strokeStyle = '#38BDF8';
       ctx.lineWidth = 2.5;
       ctx.fillStyle = 'rgba(30, 58, 95, 0.35)';
       ctx.fillRect(110, 110, 740, 320);
       ctx.strokeRect(110, 110, 740, 320);
 
-      // Inner Courtyard / Open-to-Below Atrium
+      // Inner Courtyard / Open-to-Below Rectangle (320..640, 180..360)
       ctx.fillStyle = currentFloor === 1 ? 'rgba(34, 197, 94, 0.10)' : 'rgba(11, 25, 44, 0.75)';
       ctx.fillRect(320, 180, 320, 180);
-      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
       ctx.strokeRect(320, 180, 320, 180);
 
       // Wing & Zone Labels
@@ -236,25 +265,35 @@
         }
       });
 
-      // Active shortest path on current floor
+      // Active shortest path (both same-floor segments AND cross-floor stair transitions)
       if (activePath.length > 1) {
-        ctx.strokeStyle = '#FACC15';
-        ctx.lineWidth = 5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        let drawing = false;
-        for (let i = 0; i < activePath.length; i++) {
-          const n = nodes[activePath[i]];
-          if (n.floor === currentFloor) {
-            const px = n.x * W;
-            const py = n.y * H;
-            if (!drawing) { ctx.moveTo(px, py); drawing = true; }
-            else { ctx.lineTo(px, py); }
-          } else {
-            drawing = false;
+        for (let i = 0; i < activePath.length - 1; i++) {
+          const curr = nodes[activePath[i]];
+          const next = nodes[activePath[i + 1]];
+
+          if (curr.floor === currentFloor && next.floor === currentFloor) {
+            // Solid yellow line between two nodes on the same floor
+            ctx.strokeStyle = '#FACC15';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(curr.x * W, curr.y * H);
+            ctx.lineTo(next.x * W, next.y * H);
+            ctx.stroke();
+          } else if (curr.floor === currentFloor && next.floor !== currentFloor) {
+            // Leaving current floor via stairs to next.floor
+            const stairX = ((curr.x + next.x) / 2) * W;
+            const stairY = ((curr.y + next.y) / 2) * H;
+            const dir = next.floor > currentFloor ? `▲ STAIRS TO FLR ${next.floor}` : `▼ STAIRS TO FLR ${next.floor}`;
+            drawStairConnector(ctx, curr.x * W, curr.y * H, stairX, stairY, dir);
+          } else if (curr.floor !== currentFloor && next.floor === currentFloor) {
+            // Arriving on current floor via stairs from curr.floor
+            const stairX = ((curr.x + next.x) / 2) * W;
+            const stairY = ((curr.y + next.y) / 2) * H;
+            const dir = `STAIRS FROM FLR ${curr.floor}`;
+            drawStairConnector(ctx, stairX, stairY, next.x * W, next.y * H, dir);
           }
         }
-        ctx.stroke();
       }
 
       // Nodes on current floor
