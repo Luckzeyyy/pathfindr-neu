@@ -18,7 +18,7 @@
     body { background-color: var(--bg); color: var(--text); padding: 20px; }
     .header { text-align: center; margin-bottom: 24px; padding: 20px; background: var(--primary); color: white; border-radius: 12px; }
     .header h1 { font-size: 2rem; color: var(--accent); margin-bottom: 6px; }
-    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; max-width: 1280px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; max-width: 1280px; margin: 0 auto; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .card h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
@@ -36,6 +36,17 @@
     .stat-box span { display: block; font-size: 0.72rem; color: var(--muted); }
     .stat-box strong { font-size: 1.05rem; color: var(--primary); }
     .directions { margin-top: 16px; padding-left: 20px; font-size: 0.9rem; line-height: 1.65; }
+
+    /* Destination Photo Preview Card */
+    .preview-box { margin-top: 18px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #F8FAFC; }
+    .preview-header { background: var(--primary); color: white; padding: 8px 12px; font-size: 0.82rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+    .preview-header span.badge { background: var(--accent); color: var(--primary); padding: 2px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+    .preview-img-wrap { width: 100%; height: 185px; background: #0B192C; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .preview-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .preview-fallback { text-align: center; padding: 16px; color: #94A3B8; font-size: 0.82rem; line-height: 1.45; }
+    .preview-fallback strong { display: block; color: var(--accent); font-size: 0.95rem; margin-bottom: 4px; }
+    .preview-caption { padding: 10px 12px; font-size: 0.82rem; color: var(--text); line-height: 1.45; border-top: 1px solid var(--border); }
+
     .legend { display: flex; gap: 14px; margin-top: 12px; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
     .legend span { display: flex; align-items: center; gap: 6px; }
     .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
@@ -65,6 +76,18 @@
       </div>
 
       <ol class="directions" id="stepList"></ol>
+
+      <!-- Destination Visual Preview -->
+      <div class="preview-box">
+        <div class="preview-header">
+          <span>Destination Preview</span>
+          <span class="badge" id="previewFloorBadge">Floor 2</span>
+        </div>
+        <div class="preview-img-wrap" id="previewImgWrap">
+          <img id="destPhoto" src="" alt="Destination Preview">
+        </div>
+        <div class="preview-caption" id="previewDesc"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -89,24 +112,58 @@
   </div>
 
   <script>
-    // Main Corridor Loop coordinates matching the drawn red rectangle:
-    // Top Horizontal Corridor: y = 0.2963 (y = 160px, just above inner atrium)
-    // Bottom Horizontal Corridor: y = 0.6667 (y = 360px, aligned along bottom of inner atrium & Cashier/MPH)
-    // Left Vertical Corridor: x = 0.22 (x = 211px)
-    // Right Vertical Corridor: x = 0.78 (x = 749px)
-
-    // 10 Primary Destination Nodes (0..9)
+    // 10 Primary Destination Nodes (0..9) matched to exact uploaded GitHub filenames
     const nodes = [
-      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.3333, y: 0.50, type: "room" },
-      { id: 1, name: "Node 1: Canteen", floor: 1, x: 0.50, y: 0.50, type: "room" },
-      { id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.22, y: 0.6667, type: "room" },
-      { id: 3, name: "Node 3: Cashier", floor: 2, x: 0.3333, y: 0.6667, type: "room" },
-      { id: 4, name: "Node 4: Clinic", floor: 2, x: 0.50, y: 0.50, type: "room" },
-      { id: 5, name: "Node 5: Multi-Purpose Hall (MPH)", floor: 2, x: 0.1146, y: 0.6667, type: "room" },
-      { id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.78, y: 0.6667, type: "room" },
-      { id: 7, name: "Node 7: NEU Hall", floor: 4, x: 0.78, y: 0.50, type: "room" },
-      { id: 8, name: "Node 8: Office of Student Discipline", floor: 4, x: 0.6667, y: 0.6667, type: "room" },
-      { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, type: "room" }
+      {
+        id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.3333, y: 0.50, type: "room",
+        img: "Quadrangle.jpg",
+        desc: "Open-air central courtyard on the Ground Floor surrounded by the Main Building wings."
+      },
+      {
+        id: 1, name: "Node 1: Canteen", floor: 1, x: 0.50, y: 0.50, type: "room",
+        img: "Canteen.jpg",
+        desc: "Main student dining area located at the Center/Atrium section of the 1st Floor."
+      },
+      {
+        id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.22, y: 0.6667, type: "room",
+        img: "Bookstore.jpg",
+        desc: "University Bookstore / Shop-5 located along the Left Wing Ground Floor corridor beside the Left-Bottom stairs."
+      },
+      {
+        id: 3, name: "Node 3: Cashier", floor: 2, x: 0.3333, y: 0.6667, type: "room",
+        img: "Cashier.jpg",
+        desc: "Finance & Cashier payment windows positioned at the inner bottom-left corner of the 2nd Floor walkway."
+      },
+      {
+        id: 4, name: "Node 4: Clinic", floor: 2, x: 0.50, y: 0.50, type: "room",
+        img: "Clinic.jpg",
+        desc: "University Medical & Dental Clinic (M235) located at the Center Wing of the 2nd Floor."
+      },
+      {
+        id: 5, name: "Node 5: Multi-Purpose Hall (MPH)", floor: 2, x: 0.1146, y: 0.6667, type: "room",
+        img: "MPH.jpg",
+        desc: "Large function and assembly hall located on the leftmost side of the 2nd Floor Left Wing."
+      },
+      {
+        id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.78, y: 0.6667, type: "room",
+        img: "CAS.jpg",
+        desc: "CAS Dean's Office & Faculty area located at the Right Wing bottom corridor of the 3rd Floor."
+      },
+      {
+        id: 7, name: "Node 7: NEU Hall", floor: 4, x: 0.78, y: 0.50, type: "room",
+        img: "NEU HALL.jpg",
+        desc: "Main indoor auditorium on the 4th Floor Right Wing, directly opposite the Basketball Court."
+      },
+      {
+        id: 8, name: "Node 8: Office of Student Discipline", floor: 4, x: 0.6667, y: 0.6667, type: "room",
+        img: "OSD.jpg",
+        desc: "Office of Student Discipline (M430) along the 4th Floor bottom-right hallway."
+      },
+      {
+        id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, type: "room",
+        img: "Basketball Court.jpg",
+        desc: "Indoor gymnasium and basketball court occupying the 4th Floor Left Wing."
+      }
     ];
 
     // 7 Symmetric Vertical Stairwells across all 4 floors
@@ -136,20 +193,20 @@
       });
     });
 
-    // Invisible 90-degree hallway waypoints forming the exact red-rectangle loop
+    // Invisible 90-degree hallway waypoints forming the corridor loop
     const hallJunctions = [
-      { code: "LOOP_TL", x: 0.22, y: 0.2963 },    // Top-Left corner of corridor loop
-      { code: "LOOP_TM", x: 0.50, y: 0.2963 },    // Top-Center junction (connects CT stairs & Clinic/Canteen)
-      { code: "LOOP_TR", x: 0.78, y: 0.2963 },    // Top-Right corner of corridor loop
-      { code: "LOOP_BL", x: 0.22, y: 0.6667 },    // Bottom-Left corner of corridor loop
-      { code: "LOOP_BM_L", x: 0.3333, y: 0.6667 },// Bottom-Center-Left junction (Cashier & CBL stairs)
-      { code: "LOOP_BM", x: 0.50, y: 0.6667 },    // Bottom-Center junction (connects directly up to Clinic/Canteen)
-      { code: "LOOP_BM_R", x: 0.62, y: 0.6667 },  // Bottom-Center-Right junction (CBR stairs)
-      { code: "LOOP_BR", x: 0.78, y: 0.6667 },    // Bottom-Right corner of corridor loop
-      { code: "LT_STUB", x: 0.14, y: 0.2963 },    // Orthogonal connector to Left-Top Stairs
-      { code: "LB_STUB", x: 0.14, y: 0.6667 },    // Orthogonal connector to Left-Bottom Stairs
-      { code: "RT_STUB", x: 0.84, y: 0.2963 },    // Orthogonal connector to Right-Top Stairs
-      { code: "RB_STUB", x: 0.84, y: 0.6667 }     // Orthogonal connector to Right-Bottom Stairs
+      { code: "LOOP_TL", x: 0.22, y: 0.2963 },
+      { code: "LOOP_TM", x: 0.50, y: 0.2963 },
+      { code: "LOOP_TR", x: 0.78, y: 0.2963 },
+      { code: "LOOP_BL", x: 0.22, y: 0.6667 },
+      { code: "LOOP_BM_L", x: 0.3333, y: 0.6667 },
+      { code: "LOOP_BM", x: 0.50, y: 0.6667 },
+      { code: "LOOP_BM_R", x: 0.62, y: 0.6667 },
+      { code: "LOOP_BR", x: 0.78, y: 0.6667 },
+      { code: "LT_STUB", x: 0.14, y: 0.2963 },
+      { code: "LB_STUB", x: 0.14, y: 0.6667 },
+      { code: "RT_STUB", x: 0.84, y: 0.2963 },
+      { code: "RB_STUB", x: 0.84, y: 0.6667 }
     ];
 
     const hallNodeMap = {};
@@ -171,32 +228,25 @@
     const S = (code, f) => stairNodeMap[`${code}_${f}`];
     const H = (code, f) => hallNodeMap[`${code}_${f}`];
 
-    // Strictly orthogonal (Rook-only) edges along the red-rectangle loop
     const edges = [
-      // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4 (16.5m per floor)
       ...stairShafts.flatMap(s => [
         [S(s.code, 1), S(s.code, 2), 16.5],
         [S(s.code, 2), S(s.code, 3), 16.5],
         [S(s.code, 3), S(s.code, 4), 16.5]
       ]),
 
-      // Main Corridor Loop + Orthogonal Stair Spurs on all 4 floors
       ...[1, 2, 3, 4].flatMap(f => [
-        // Top horizontal corridor (y = 0.2963)
         [H("LOOP_TL", f), H("LOOP_TM", f), 26.0],
         [H("LOOP_TM", f), H("LOOP_TR", f), 26.0],
 
-        // Bottom horizontal corridor (y = 0.6667)
         [H("LOOP_BL", f), H("LOOP_BM_L", f), 12.0],
         [H("LOOP_BM_L", f), H("LOOP_BM", f), 14.0],
         [H("LOOP_BM", f), H("LOOP_BM_R", f), 12.0],
         [H("LOOP_BM_R", f), H("LOOP_BR", f), 14.0],
 
-        // Left & Right vertical corridors (x = 0.22 and x = 0.78)
         [H("LOOP_TL", f), H("LOOP_BL", f), 24.0],
         [H("LOOP_TR", f), H("LOOP_BR", f), 24.0],
 
-        // Orthogonal 90-degree connections from the 7 stairwells into the corridor loop
         [S("LT", f), H("LT_STUB", f), 3.0],
         [H("LT_STUB", f), H("LOOP_TL", f), 6.0],
 
@@ -214,28 +264,28 @@
         [H("RB_STUB", f), H("LOOP_BR", f), 5.0]
       ]),
 
-      // Floor 1 Room Connections
-      [2, H("LOOP_BL", 1), 0.1],     // Bookstore on bottom-left loop corner (0.22, 0.6667)
-      [0, H("LOOP_BM_L", 1), 10.0],   // Quadrangle (0.3333, 0.50) connects vertically to y=0.6667
-      [0, 1, 30.0],                   // Quadrangle <-> Canteen
-      [1, H("LOOP_TM", 1), 14.0],     // Canteen (0.50, 0.50) connects vertically to top loop
-      [1, H("LOOP_BM", 1), 14.0],     // Canteen (0.50, 0.50) connects vertically to bottom loop
+      // Floor 1
+      [2, H("LOOP_BL", 1), 0.1],
+      [0, H("LOOP_BM_L", 1), 10.0],
+      [0, 1, 30.0],
+      [1, H("LOOP_TM", 1), 14.0],
+      [1, H("LOOP_BM", 1), 14.0],
 
-      // Floor 2 Room Connections
-      [5, H("LB_STUB", 2), 2.0],      // Multi-Purpose Hall (0.1146, 0.6667) along bottom-left corridor
-      [3, H("LOOP_BM_L", 2), 0.1],    // Cashier on inner bottom-left vertex (0.3333, 0.6667)
-      [4, H("LOOP_TM", 2), 14.0],     // Clinic (0.50, 0.50) connects straight up to top loop
-      [4, H("LOOP_BM", 2), 14.0],     // Clinic (0.50, 0.50) connects straight down to bottom loop
+      // Floor 2
+      [5, H("LB_STUB", 2), 2.0],
+      [3, H("LOOP_BM_L", 2), 0.1],
+      [4, H("LOOP_TM", 2), 14.0],
+      [4, H("LOOP_BM", 2), 14.0],
 
-      // Floor 3 Room Connections
-      [6, H("LOOP_BR", 3), 0.1],      // CAS on bottom-right loop corner (0.78, 0.6667)
+      // Floor 3
+      [6, H("LOOP_BR", 3), 0.1],
 
-      // Floor 4 Room Connections
-      [9, H("LOOP_TL", 4), 12.0],     // Basketball Court (0.22, 0.50) on left vertical corridor
+      // Floor 4
+      [9, H("LOOP_TL", 4), 12.0],
       [9, H("LOOP_BL", 4), 12.0],
-      [7, H("LOOP_TR", 4), 12.0],     // NEU Hall (0.78, 0.50) on right vertical corridor
+      [7, H("LOOP_TR", 4), 12.0],
       [7, H("LOOP_BR", 4), 12.0],
-      [8, H("LOOP_BM_R", 4), 4.0],    // Office of Student Discipline (0.6667, 0.6667) on bottom corridor
+      [8, H("LOOP_BM_R", 4), 4.0],
       [8, H("LOOP_BR", 4), 10.0]
     ];
 
@@ -248,8 +298,30 @@
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
-    startSel.value = 6; // CAS
+    startSel.value = 2; // Bookstore
     endSel.value = 4;   // Clinic
+
+    function updateDestinationPreview(destNode) {
+      document.getElementById('previewFloorBadge').textContent = `Floor ${destNode.floor}`;
+      document.getElementById('previewDesc').textContent = destNode.desc || '';
+
+      const wrap = document.getElementById('previewImgWrap');
+      const cleanName = destNode.name.replace(/^Node \d+:\s*/, '');
+      wrap.innerHTML = '';
+
+      const img = document.createElement('img');
+      img.src = encodeURI(destNode.img);
+      img.alt = cleanName;
+      img.onerror = function() {
+        wrap.innerHTML = `
+          <div class="preview-fallback">
+            <strong>${cleanName}</strong>
+            Upload photo as <code>${destNode.img}</code> in your GitHub repo to display actual room preview.
+          </div>
+        `;
+      };
+      wrap.appendChild(img);
+    }
 
     function setFloor(f) {
       currentFloor = f;
@@ -260,6 +332,9 @@
     function calculateRoute() {
       const start = parseInt(startSel.value);
       const end = parseInt(endSel.value);
+
+      updateDestinationPreview(nodes[end]);
+
       const dist = Array(nodes.length).fill(Infinity);
       const prev = Array(nodes.length).fill(null);
       const visited = new Set();
@@ -367,7 +442,7 @@
       ctx.textAlign = 'left';
       ctx.fillText(`NEU MAIN BUILDING — FLOOR ${currentFloor}`, 110, 55);
 
-      // Orthogonal shortest path segments on current floor (90-degree Rook turns)
+      // Orthogonal shortest path segments on current floor
       if (activePath.length > 1) {
         ctx.strokeStyle = '#FACC15';
         ctx.lineWidth = 5;
