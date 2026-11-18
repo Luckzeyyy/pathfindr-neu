@@ -36,9 +36,10 @@
     .stat-box span { display: block; font-size: 0.72rem; color: var(--muted); }
     .stat-box strong { font-size: 1.05rem; color: var(--primary); }
     .directions { margin-top: 16px; padding-left: 20px; font-size: 0.9rem; line-height: 1.65; }
-    .legend { display: flex; gap: 16px; margin-top: 12px; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .legend { display: flex; gap: 14px; margin-top: 12px; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
     .legend span { display: flex; align-items: center; gap: 6px; }
     .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .sq { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
   </style>
 </head>
 <body>
@@ -82,32 +83,108 @@
       <div class="legend">
         <span><i class="dot" style="background:#22C55E"></i> Start Location</span>
         <span><i class="dot" style="background:#EF4444"></i> Destination</span>
-        <span><i class="dot" style="background:#38BDF8"></i> Waypoint / Room</span>
-        <span><i class="dot" style="background:#FACC15"></i> Shortest Path &amp; Stairs</span>
+        <span><i class="dot" style="background:#38BDF8"></i> Room / Destination Node</span>
+        <span><i class="sq" style="background:#94A3B8"></i> Stairwell (5 Vertical Shafts)</span>
+        <span><i class="dot" style="background:#FACC15"></i> Shortest Path</span>
       </div>
     </div>
   </div>
 
   <script>
-    // Calibrated node positions: Cashier on inner rectangle bottom-left vertex, MPH horizontally aligned on left outer border
+    // 10 Primary Destination Rooms (ids 0..9)
     const nodes = [
-      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.35, y: 0.50 },
-      { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.52, y: 0.50 },
-      { id: 2, name: "Node 2: Bookstore / Shop-5", floor: 1, x: 0.14, y: 0.72 },
-      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.3333, y: 0.6667 },
-      { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.50, y: 0.50 },
-      { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.1146, y: 0.6667 },
-      { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.76, y: 0.72 },
-      { id: 7, name: "Node 7: Main Stairs", floor: 3, x: 0.50, y: 0.72 },
-      { id: 8, name: "Node 8: Student Discipline (M430)", floor: 4, x: 0.76, y: 0.72 },
-      { id: 9, name: "Node 9: NEU Gym / Court", floor: 4, x: 0.22, y: 0.50 }
+      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.35, y: 0.50, isStair: false },
+      { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.52, y: 0.50, isStair: false },
+      { id: 2, name: "Node 2: Bookstore / Shop-5", floor: 1, x: 0.14, y: 0.72, isStair: false },
+      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.3333, y: 0.6667, isStair: false },
+      { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.50, y: 0.50, isStair: false },
+      { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.1146, y: 0.6667, isStair: false },
+      { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.76, y: 0.72, isStair: false },
+      { id: 7, name: "Node 7: Main Stairs (Center Lobby)", floor: 3, x: 0.50, y: 0.72, isStair: false },
+      { id: 8, name: "Node 8: Student Discipline (M430)", floor: 4, x: 0.76, y: 0.72, isStair: false },
+      { id: 9, name: "Node 9: NEU Gym / Court", floor: 4, x: 0.22, y: 0.50, isStair: false }
     ];
 
+    // 5 Vertical Stairwells across all 4 floors:
+    // LT = Left-Top, LB = Left-Bottom, CT = Center-Top, CBL = Center-Bottom-Left, CBR = Center-Bottom-Right
+    const stairShafts = [
+      { code: "LT", label: "Left-Top Stairs", x: 0.14, y: 0.24 },
+      { code: "LB", label: "Left-Bottom Stairs", x: 0.14, y: 0.78 },
+      { code: "CT", label: "Center-Top Stairs", x: 0.50, y: 0.24 },
+      { code: "CBL", label: "Center-Bottom Left Stairs", x: 0.38, y: 0.75 },
+      { code: "CBR", label: "Center-Bottom Right Stairs", x: 0.62, y: 0.75 }
+    ];
+
+    const stairNodeMap = {}; // e.g., stairNodeMap["LB_1"] -> node id
+    [1, 2, 3, 4].forEach(f => {
+      stairShafts.forEach(s => {
+        const id = nodes.length;
+        stairNodeMap[`${s.code}_${f}`] = id;
+        nodes.push({
+          id,
+          name: `${s.label} (Floor ${f})`,
+          shortLabel: "STAIRS",
+          floor: f,
+          x: s.x,
+          y: s.y,
+          isStair: true
+        });
+      });
+    });
+
+    const S = (code, f) => stairNodeMap[`${code}_${f}`];
+
+    // Graph edges: vertical stair connections (10m per floor) + horizontal room-to-stair & room-to-room corridors
     const edges = [
-      [0, 1, 24.0], [0, 2, 21.0], [1, 2, 38.5],
-      [0, 3, 18.5], [2, 3, 16.0], [3, 4, 29.0], [3, 5, 19.5], [4, 5, 17.0],
-      [4, 6, 22.5], [5, 7, 15.5], [6, 7, 27.0],
-      [7, 8, 16.5], [6, 9, 25.0], [8, 9, 31.5]
+      // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4
+      ...stairShafts.flatMap(s => [
+        [S(s.code, 1), S(s.code, 2), 10.0],
+        [S(s.code, 2), S(s.code, 3), 10.0],
+        [S(s.code, 3), S(s.code, 4), 10.0]
+      ]),
+
+      // Floor 1 horizontal connections
+      [2, S("LB", 1), 4.0],     // Bookstore right next to Left-Bottom Stairs
+      [2, S("LT", 1), 22.0],
+      [2, 0, 18.0],              // Bookstore <-> Quadrangle
+      [0, S("CBL", 1), 11.0],
+      [0, S("CT", 1), 14.0],
+      [0, 1, 16.0],              // Quadrangle <-> Canteen
+      [1, S("CBR", 1), 13.0],
+      [1, S("CT", 1), 13.0],
+      [S("LB", 1), S("CBL", 1), 19.0],
+      [S("CBL", 1), S("CBR", 1), 18.0],
+      [S("LT", 1), S("CT", 1), 26.0],
+
+      // Floor 2 horizontal connections
+      [5, S("LB", 2), 6.0],      // Multi-Purpose Hall <-> Left-Bottom Stairs
+      [5, S("LT", 2), 18.0],
+      [5, 3, 17.0],              // MPH <-> Cashier
+      [3, S("CBL", 2), 6.0],     // Cashier right next to Center-Bottom Left Stairs
+      [3, 4, 16.0],              // Cashier <-> Clinic
+      [4, S("CT", 2), 12.0],
+      [4, S("CBR", 2), 14.0],
+      [S("LB", 2), S("CBL", 2), 19.0],
+      [S("CBL", 2), S("CBR", 2), 18.0],
+      [S("LT", 2), S("CT", 2), 26.0],
+
+      // Floor 3 horizontal connections
+      [7, S("CBL", 3), 8.0],     // Main Stairs Lobby <-> Center-Bottom Left Stairs
+      [7, S("CBR", 3), 8.0],     // Main Stairs Lobby <-> Center-Bottom Right Stairs
+      [6, S("CBR", 3), 11.0],    // CAS Dean's Office (326) <-> Center-Bottom Right Stairs
+      [6, 7, 19.0],
+      [S("LB", 3), S("CBL", 3), 19.0],
+      [S("LT", 3), S("LB", 3), 24.0],
+      [S("LT", 3), S("CT", 3), 26.0],
+
+      // Floor 4 horizontal connections
+      [9, S("LB", 4), 12.0],     // NEU Gym / Basketball Court <-> Left-Bottom Stairs
+      [9, S("LT", 4), 12.0],     // NEU Gym / Basketball Court <-> Left-Top Stairs
+      [8, S("CBR", 4), 11.0],    // Student Discipline (M430) <-> Center-Bottom Right Stairs
+      [8, 9, 36.0],
+      [S("LB", 4), S("CBL", 4), 19.0],
+      [S("CBL", 4), S("CBR", 4), 18.0],
+      [S("LT", 4), S("CT", 4), 26.0]
     ];
 
     let currentFloor = 1;
@@ -115,10 +192,12 @@
 
     const startSel = document.getElementById('startNode');
     const endSel = document.getElementById('endNode');
-    nodes.forEach(n => {
+    // Only populate the 10 primary rooms in dropdowns
+    nodes.filter(n => !n.isStair).forEach(n => {
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
+    startSel.value = 2; // Default demo: Bookstore -> NEU Gym (uses Left-Bottom Stairs!)
     endSel.value = 9;
 
     function setFloor(f) {
@@ -163,50 +242,39 @@
       document.getElementById('paceOut').textContent = `~${estPaces} steps`;
       document.getElementById('timeOut').textContent = timeStr;
 
+      // Compress consecutive stair floors into clean step-by-step instructions
       const stepList = document.getElementById('stepList');
       stepList.innerHTML = '';
       if (activePath.length <= 1) {
         stepList.innerHTML = '<li>You are already at your destination.</li>';
       } else {
-        for (let i = 0; i < activePath.length - 1; i++) {
-          const from = nodes[activePath[i]];
-          const to = nodes[activePath[i + 1]];
-          const action = from.floor !== to.floor ? `Take stairs to Floor ${to.floor}: ` : `Walk to `;
-          const li = document.createElement('li');
-          li.textContent = `${action}${to.name}`;
-          stepList.appendChild(li);
+        let i = 0;
+        while (i < activePath.length - 1) {
+          const curr = nodes[activePath[i]];
+          const next = nodes[activePath[i + 1]];
+
+          if (curr.isStair && next.isStair && curr.floor !== next.floor) {
+            // Group multi-floor stair climb into one clean step
+            let j = i + 1;
+            while (j + 1 < activePath.length && nodes[activePath[j + 1]].isStair && nodes[activePath[j + 1]].floor !== nodes[activePath[j]].floor) {
+              j++;
+            }
+            const destFloor = nodes[activePath[j]].floor;
+            const dir = destFloor > curr.floor ? "Take stairs up to" : "Take stairs down to";
+            const li = document.createElement('li');
+            li.textContent = `${dir} Floor ${destFloor}`;
+            stepList.appendChild(li);
+            i = j;
+          } else {
+            const li = document.createElement('li');
+            li.textContent = next.isStair ? `Walk to nearest Stairs` : `Walk to ${next.name}`;
+            stepList.appendChild(li);
+            i++;
+          }
         }
       }
 
       setFloor(nodes[start].floor);
-    }
-
-    function drawStairConnector(ctx, fromX, fromY, toX, toY) {
-      ctx.strokeStyle = '#FACC15';
-      ctx.lineWidth = 4.5;
-      ctx.setLineDash([8, 6]);
-      ctx.beginPath();
-      ctx.moveTo(fromX, fromY);
-      ctx.lineTo(toX, toY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.beginPath();
-      ctx.arc(toX, toY, 7, 0, Math.PI * 2);
-      ctx.fillStyle = '#FACC15';
-      ctx.fill();
-      ctx.strokeStyle = '#0B192C';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      const labelText = 'STAIRS';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.textAlign = 'center';
-      const w = ctx.measureText(labelText).width;
-      ctx.fillStyle = '#FACC15';
-      ctx.fillRect(toX - w / 2 - 6, toY + 12, w + 12, 18);
-      ctx.fillStyle = '#0B192C';
-      ctx.fillText(labelText, toX, toY + 25);
     }
 
     function drawMap() {
@@ -249,45 +317,48 @@
       ctx.textAlign = 'left';
       ctx.fillText(`NEU MAIN BUILDING — FLOOR ${currentFloor}`, 110, 55);
 
-      // Faint edges on current floor
-      edges.forEach(([a, b]) => {
-        const na = nodes[a], nb = nodes[b];
-        if (na.floor === currentFloor && nb.floor === currentFloor) {
-          ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([6, 6]);
-          ctx.beginPath();
-          ctx.moveTo(na.x * W, na.y * H);
-          ctx.lineTo(nb.x * W, nb.y * H);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      });
-
-      // Active shortest path (same-floor solid lines + outgoing stair transition only)
+      // Active shortest path segments on current floor
       if (activePath.length > 1) {
-        for (let i = 0; i < activePath.length - 1; i++) {
-          const curr = nodes[activePath[i]];
-          const next = nodes[activePath[i + 1]];
-
-          if (curr.floor === currentFloor && next.floor === currentFloor) {
-            ctx.strokeStyle = '#FACC15';
-            ctx.lineWidth = 5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(curr.x * W, curr.y * H);
-            ctx.lineTo(next.x * W, next.y * H);
-            ctx.stroke();
-          } else if (curr.floor === currentFloor && next.floor !== currentFloor) {
-            const stairX = ((curr.x + next.x) / 2) * W;
-            const stairY = ((curr.y + next.y) / 2) * H;
-            drawStairConnector(ctx, curr.x * W, curr.y * H, stairX, stairY);
+        ctx.strokeStyle = '#FACC15';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        let drawing = false;
+        for (let i = 0; i < activePath.length; i++) {
+          const n = nodes[activePath[i]];
+          if (n.floor === currentFloor) {
+            const px = n.x * W;
+            const py = n.y * H;
+            if (!drawing) { ctx.moveTo(px, py); drawing = true; }
+            else { ctx.lineTo(px, py); }
+          } else {
+            drawing = false;
           }
         }
+        ctx.stroke();
       }
 
-      // Nodes on current floor
-      nodes.filter(n => n.floor === currentFloor).forEach(n => {
+      // Draw all 5 stairwells on current floor (small square icons)
+      const activeSet = new Set(activePath);
+      nodes.filter(n => n.floor === currentFloor && n.isStair).forEach(s => {
+        const px = s.x * W;
+        const py = s.y * H;
+        const isUsed = activeSet.has(s.id);
+
+        ctx.fillStyle = isUsed ? '#FACC15' : '#475569';
+        ctx.fillRect(px - 7, py - 7, 14, 14);
+        ctx.strokeStyle = isUsed ? '#0B192C' : '#94A3B8';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(px - 7, py - 7, 14, 14);
+
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = isUsed ? '#FACC15' : '#94A3B8';
+        ctx.fillText('STAIRS', px, py + 19);
+      });
+
+      // Draw primary destination rooms on current floor
+      nodes.filter(n => n.floor === currentFloor && !n.isStair).forEach(n => {
         const px = n.x * W;
         const py = n.y * H;
         const isStart = activePath[0] === n.id;
