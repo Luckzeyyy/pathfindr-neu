@@ -24,6 +24,7 @@
     .card h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
     label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
     select, button { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; margin-bottom: 14px; }
+    select { background-color: #FFFFFF; cursor: pointer; }
     button { background: var(--primary); color: white; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; }
     button:hover { background: #00406B; }
     .floor-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -31,7 +32,7 @@
     .tab-btn.active { background: var(--primary); color: var(--accent); }
     .map-wrapper { position: relative; width: 100%; border: 2px solid var(--primary); border-radius: 8px; overflow: hidden; background: #0B192C; }
     canvas { display: block; width: 100%; height: auto; }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
     .stat-box { background: #F8FAFC; padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent); }
     .stat-box span { display: block; font-size: 0.72rem; color: var(--muted); }
     .stat-box strong { font-size: 1.05rem; color: var(--primary); }
@@ -57,8 +58,6 @@
 
       <label for="endNode">Destination</label>
       <select id="endNode" onchange="calculateRoute()"></select>
-
-      <button onclick="calculateRoute()">Find Shortest Path</button>
 
       <div class="stats">
         <div class="stat-box"><span>Distance</span><strong id="distOut">0.0 m</strong></div>
@@ -105,10 +104,7 @@
       { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, type: "room" }
     ];
 
-    // 7 Symmetric Vertical Stairwells across all 4 floors:
-    // Left Wing aligned at x = 0.14 (Top y=0.25, Bottom y=0.75)
-    // Center aligned at CT (0.50, 0.25), CBL (0.3333, 0.75), CBR (0.62, 0.75)
-    // Right Wing aligned at x = 0.84 (Top y=0.25, Bottom y=0.75)
+    // 7 Symmetric Vertical Stairwells across all 4 floors
     const stairShafts = [
       { code: "LT", label: "Left-Top Stairs", x: 0.14, y: 0.25 },
       { code: "LB", label: "Left-Bottom Stairs", x: 0.14, y: 0.75 },
@@ -145,6 +141,7 @@
       { code: "IN_TR", x: 0.6667, y: 0.25 },
       { code: "IN_TL", x: 0.3333, y: 0.25 },
       { code: "MID_R", x: 0.6667, y: 0.50 },
+      { code: "RB_CORNER", x: 0.78, y: 0.6667 },
       { code: "RT_BOT", x: 0.78, y: 0.75 },
       { code: "RT_TOP", x: 0.78, y: 0.25 }
     ];
@@ -198,16 +195,19 @@
         [H("LT_CORNER", f), H("LB_CORNER", f), 20.0],
         [H("LB_CORNER", f), H("LB_BOT", f), 6.0],
 
-        // Inner bottom horizontal corridor (y = 0.6667)
+        // Inner bottom horizontal corridor (y = 0.6667) connecting Left, Center, and Right wings
         [H("LB_CORNER", f), H("IN_BL", f), 12.0],
         [H("IN_BL", f), H("IN_BR", f), 22.0],
+        [H("IN_BR", f), H("RB_CORNER", f), 12.0],
 
-        // Inner left & upper-right vertical corridors
+        // Inner left & right vertical corridors
         [H("IN_TL", f), H("IN_BL", f), 20.0],
         [H("IN_TR", f), H("MID_R", f), 12.0],
+        [H("MID_R", f), H("IN_BR", f), 10.0],
 
         // Right wing vertical corridor (x = 0.78)
-        [H("RT_TOP", f), H("RT_BOT", f), 26.0]
+        [H("RT_TOP", f), H("RB_CORNER", f), 20.0],
+        [H("RB_CORNER", f), H("RT_BOT", f), 6.0]
       ]),
 
       // Floor 1 Room Connections
@@ -220,24 +220,22 @@
       [1, S("CT", 1), 14.0],
       [1, H("MID_R", 1), 14.0],
 
-      // Floor 2 Room Connections
+      // Floor 2 Room Connections (Clinic reachable from both Right-Bottom and Right-Top corridors)
       [5, H("LB_CORNER", 2), 6.65],
       [3, H("IN_BL", 2), 0.1],
       [3, S("CBL", 2), 10.15],
       [4, S("CT", 2), 14.0],
       [4, H("MID_R", 2), 14.0],
 
-      // Floor 3 Room Connections:
-      // CAS (0.78, 0.75) is right beside Right-Bottom Stairs (0.84, 0.75)
+      // Floor 3 Room Connections
       [6, S("RB", 3), 5.0],
       [6, H("RT_BOT", 3), 0.1],
 
-      // Floor 4 Room Connections:
-      // Court (0.22, 0.50) -> drops down to y=0.75 -> goes right -> OSD (0.70, 0.75) -> RT_BOT (0.78, 0.75) -> goes up to NEU Hall (0.78, 0.50)
+      // Floor 4 Room Connections
       [9, H("LT_CORNER", 4), 12.0],
       [9, H("LB_CORNER", 4), 12.0],
-      [7, H("RT_TOP", 4), 22.0],
-      [7, H("RT_BOT", 4), 37.0],
+      [7, H("RT_TOP", 4), 16.0],
+      [7, H("RB_CORNER", 4), 16.0],
       [8, S("CBR", 4), 8.0],
       [8, H("RT_BOT", 4), 8.0]
     ];
@@ -251,8 +249,8 @@
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
-    startSel.value = 6; // Default demo: CAS (3rd Floor Right) -> NEU Hall (4th Floor Right) via Right-Bottom Stairs!
-    endSel.value = 7;
+    startSel.value = 6; // CAS
+    endSel.value = 4;   // Clinic
 
     function setFloor(f) {
       currentFloor = f;
