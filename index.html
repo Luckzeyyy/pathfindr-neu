@@ -67,7 +67,7 @@
       </ol>
 
       <div class="calib-box">
-        <strong>Map Pin Tip:</strong> Click anywhere on the blueprint image to view its exact <code>(x, y)</code> percentage coordinates in the console/alert if you want to fine-tune pin positions.
+        <strong>Map Pin Tip:</strong> Click anywhere on the blueprint image to view its exact <code>(x, y)</code> coordinates so we can align every room pin accurately.
       </div>
     </div>
 
@@ -86,7 +86,6 @@
   </div>
 
   <script>
-    // Nodes 0-9 with normalized coordinates (0.0 to 1.0 relative to image width/height)
     const nodes = [
       { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.50, y: 0.45 },
       { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.78, y: 0.35 },
@@ -100,7 +99,6 @@
       { id: 9, name: "Node 9: NEU Gym / Basketball Court", floor: 4, x: 0.70, y: 0.48 }
     ];
 
-    // Undirected weighted edges (meters based on 0.75m flat / 0.35m stairs pace counts)
     const edges = [
       [0, 1, 24.0], [0, 2, 21.0], [1, 2, 38.5],
       [0, 3, 18.5], [2, 3, 16.0], [3, 4, 29.0], [3, 5, 19.5], [4, 5, 17.0],
@@ -111,23 +109,22 @@
     let currentFloor = 1;
     let activePath = [];
     const floorImages = {};
-    const extensions = ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.JPEG'];
+    const floorFiles = {
+      1: 'Floor1.png.jpg',
+      2: 'Floor2.png.jpg',
+      3: 'Floor3.png.jpg',
+      4: 'Floor4.png.jpg'
+    };
 
-    // Auto-detect mixed extensions (.jpg / .png / .jpeg) for floor1..floor4
-    function loadFloorImage(floorNum, extIndex = 0) {
-      if (extIndex >= extensions.length) return;
+    [1, 2, 3, 4].forEach(f => {
       const img = new Image();
-      img.src = `floor${floorNum}${extensions[extIndex]}`;
+      img.src = floorFiles[f];
       img.onload = () => {
-        floorImages[floorNum] = img;
-        if (currentFloor === floorNum) drawMap();
+        floorImages[f] = img;
+        if (currentFloor === f) drawMap();
       };
-      img.onerror = () => loadFloorImage(floorNum, extIndex + 1);
-    }
+    });
 
-    [1, 2, 3, 4].forEach(f => loadFloorImage(f));
-
-    // Populate dropdowns
     const startSel = document.getElementById('startNode');
     const endSel = document.getElementById('endNode');
     nodes.forEach(n => {
@@ -197,7 +194,6 @@
         canvas.width = img.naturalWidth || 1000;
         canvas.height = img.naturalHeight || 700;
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        // Subtle dark tint so glowing path lines stand out clearly
         ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       } else {
@@ -208,7 +204,6 @@
         ctx.fillText(`Loading Floor ${currentFloor} Blueprint...`, 40, 60);
       }
 
-      // Draw active path segments on current floor
       if (activePath.length > 1) {
         ctx.strokeStyle = '#FACC15';
         ctx.lineWidth = Math.max(5, canvas.width * 0.006);
@@ -229,7 +224,6 @@
         ctx.stroke();
       }
 
-      // Draw nodes on current floor
       nodes.filter(n => n.floor === currentFloor).forEach(n => {
         const px = n.x * canvas.width;
         const py = n.y * canvas.height;
@@ -245,7 +239,6 @@
         ctx.strokeStyle = '#FFFFFF';
         ctx.stroke();
 
-        // Label badge
         ctx.font = `bold ${Math.max(13, Math.round(canvas.width * 0.014))}px sans-serif`;
         const label = n.name.replace(/^Node \d+:\s*/, '');
         const textW = ctx.measureText(label).width;
@@ -256,7 +249,6 @@
       });
     }
 
-    // Click helper to get exact (x, y) ratio for pin calibration
     document.getElementById('mapCanvas').addEventListener('click', (e) => {
       const rect = e.target.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width).toFixed(2);
