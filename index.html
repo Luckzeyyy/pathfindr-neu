@@ -99,7 +99,7 @@
       { id: 3, name: "Node 3: Cashier", floor: 2, x: 0.3333, y: 0.6667, type: "room" },
       { id: 4, name: "Node 4: Clinic", floor: 2, x: 0.50, y: 0.50, type: "room" },
       { id: 5, name: "Node 5: Multi-Purpose Hall (MPH)", floor: 2, x: 0.1146, y: 0.6667, type: "room" },
-      { id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.675, y: 0.75, type: "room" },
+      { id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.78, y: 0.75, type: "room" },
       { id: 7, name: "Node 7: NEU Hall", floor: 4, x: 0.78, y: 0.50, type: "room" },
       { id: 8, name: "Node 8: Office of Student Discipline", floor: 4, x: 0.70, y: 0.75, type: "room" },
       { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, type: "room" }
@@ -213,18 +213,18 @@
       [4, S("CT", 2), 14.0],
       [4, H("MID_R", 2), 14.0],
 
-      // Floor 3 Room Connections
-      [6, S("CBR", 3), 5.0],
-      [6, H("RT_BOT", 3), 11.0],
+      // Floor 3 Room Connections (CAS on right-most wing x: 0.78, y: 0.75 parallel to NEU Hall)
+      [6, S("CBR", 3), 16.0],        // CAS (0.78, 0.75) <-> CBR Stairs (0.62, 0.75) [y=0.75]
+      [6, H("RT_BOT", 3), 0.1],       // CAS pinned on right-most bottom corridor corner (0.78, 0.75)
 
-      // Floor 4 Room Connections (OSD centered at x: 0.70, y: 0.75 between CBR stairs and RT_BOT corner)
+      // Floor 4 Room Connections
       [9, S("LT", 4), 12.0],
       [9, H("LB_CORNER", 4), 12.0],
       [7, H("MID_R", 4), 10.0],
       [7, H("RT_TOP", 4), 22.0],
       [7, H("RT_BOT", 4), 37.0],
-      [8, S("CBR", 4), 8.0],         // OSD (0.70, 0.75) <-> CBR Stairs (0.62, 0.75) [y=0.75]
-      [8, H("RT_BOT", 4), 8.0]       // OSD (0.70, 0.75) <-> RT_BOT (0.78, 0.75) -> turns 90° up to NEU Hall (0.78, 0.50)
+      [8, S("CBR", 4), 8.0],
+      [8, H("RT_BOT", 4), 8.0]
     ];
 
     let currentFloor = 1;
@@ -355,7 +355,7 @@
       ctx.textAlign = 'left';
       ctx.fillText(`NEU MAIN BUILDING — FLOOR ${currentFloor}`, 110, 55);
 
-      // Orthogonal shortest path segments on current floor
+      // Orthogonal shortest path segments on current floor (90-degree Rook turns)
       if (activePath.length > 1) {
         ctx.strokeStyle = '#FACC15';
         ctx.lineWidth = 5;
