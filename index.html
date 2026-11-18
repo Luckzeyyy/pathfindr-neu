@@ -85,33 +85,36 @@
         <span><i class="dot" style="background:#EF4444"></i> Destination</span>
         <span><i class="dot" style="background:#38BDF8"></i> Room / Destination Node</span>
         <span><i class="sq" style="background:#94A3B8"></i> Stairwell (5 Vertical Shafts)</span>
-        <span><i class="dot" style="background:#FACC15"></i> Shortest Path</span>
+        <span><i class="dot" style="background:#FACC15"></i> Orthogonal Path</span>
       </div>
     </div>
   </div>
 
   <script>
-    // 10 Primary Destination Nodes (0..9) matching Google Sheets MMW Research dataset
+    // Orthogonal Corridor Grid Constants (Rook-style horizontal & vertical hallways only)
+    // X-axes: Left-Outer = 0.1146, Left-Corridor = 0.22, Inner-Left = 0.3333, Center = 0.50, Inner-Right = 0.6667, Right-Corridor = 0.78
+    // Y-axes: Top-Corridor = 0.25, Mid-Center = 0.50, Bottom-Inner = 0.6667, Bottom-Outer = 0.75
+
+    // 10 Primary Destination Nodes (0..9)
     const nodes = [
-      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.35, y: 0.50, isStair: false },
-      { id: 1, name: "Node 1: Canteen", floor: 1, x: 0.52, y: 0.50, isStair: false },
-      { id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.14, y: 0.72, isStair: false },
-      { id: 3, name: "Node 3: Cashier", floor: 2, x: 0.3333, y: 0.6667, isStair: false },
-      { id: 4, name: "Node 4: Clinic", floor: 2, x: 0.50, y: 0.50, isStair: false },
-      { id: 5, name: "Node 5: Multi-Purpose Hall (MPH)", floor: 2, x: 0.1146, y: 0.6667, isStair: false },
-      { id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.675, y: 0.75, isStair: false },
-      { id: 7, name: "Node 7: NEU Hall", floor: 4, x: 0.78, y: 0.50, isStair: false },
-      { id: 8, name: "Node 8: Office of Student Discipline", floor: 4, x: 0.76, y: 0.72, isStair: false },
-      { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, isStair: false }
+      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.3333, y: 0.50, type: "room" },
+      { id: 1, name: "Node 1: Canteen", floor: 1, x: 0.50, y: 0.50, type: "room" },
+      { id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.22, y: 0.75, type: "room" },
+      { id: 3, name: "Node 3: Cashier", floor: 2, x: 0.3333, y: 0.6667, type: "room" },
+      { id: 4, name: "Node 4: Clinic", floor: 2, x: 0.50, y: 0.50, type: "room" },
+      { id: 5, name: "Node 5: Multi-Purpose Hall (MPH)", floor: 2, x: 0.1146, y: 0.6667, type: "room" },
+      { id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.675, y: 0.75, type: "room" },
+      { id: 7, name: "Node 7: NEU Hall", floor: 4, x: 0.78, y: 0.50, type: "room" },
+      { id: 8, name: "Node 8: Office of Student Discipline", floor: 4, x: 0.78, y: 0.75, type: "room" },
+      { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, type: "room" }
     ];
 
-    // 5 Vertical Stairwells across all 4 floors:
-    // LT = Left-Top, LB = Left-Bottom, CT = Center-Top, CBL = Center-Bottom-Left, CBR = Center-Bottom-Right
+    // 5 Vertical Stairwells aligned to orthogonal corridors
     const stairShafts = [
-      { code: "LT", label: "Left-Top Stairs", x: 0.14, y: 0.24 },
-      { code: "LB", label: "Left-Bottom Stairs", x: 0.14, y: 0.78 },
-      { code: "CT", label: "Center-Top Stairs", x: 0.50, y: 0.24 },
-      { code: "CBL", label: "Center-Bottom Left Stairs", x: 0.38, y: 0.75 },
+      { code: "LT", label: "Left-Top Stairs", x: 0.22, y: 0.25 },
+      { code: "LB", label: "Left-Bottom Stairs", x: 0.14, y: 0.75 },
+      { code: "CT", label: "Center-Top Stairs", x: 0.50, y: 0.25 },
+      { code: "CBL", label: "Center-Bottom Left Stairs", x: 0.3333, y: 0.75 },
       { code: "CBR", label: "Center-Bottom Right Stairs", x: 0.62, y: 0.75 }
     ];
 
@@ -126,14 +129,44 @@
           floor: f,
           x: s.x,
           y: s.y,
-          isStair: true
+          type: "stair"
+        });
+      });
+    });
+
+    // Invisible 90-degree hallway corner waypoints so paths NEVER cut diagonally across rooms/courtyard
+    const hallJunctions = [
+      { code: "LB_CORNER", x: 0.22, y: 0.6667 }, // Connects Left-Vertical (0.22) with MPH-Cashier horizontal (0.6667)
+      { code: "LB_BOT", x: 0.22, y: 0.75 },      // Bottom-Left corridor corner (0.22, 0.75)
+      { code: "IN_BL", x: 0.3333, y: 0.6667 },   // Inner bottom-left corner (Cashier vertex)
+      { code: "IN_BR", x: 0.6667, y: 0.6667 },   // Inner bottom-right corner
+      { code: "IN_TR", x: 0.6667, y: 0.25 },     // Inner top-right corner
+      { code: "IN_TL", x: 0.3333, y: 0.25 },     // Inner top-left corner
+      { code: "MID_R", x: 0.6667, y: 0.50 },     // Center-Right corridor (connects Canteen/Clinic to Right Wing)
+      { code: "RT_BOT", x: 0.78, y: 0.75 },      // Bottom-Right corridor corner
+      { code: "RT_TOP", x: 0.78, y: 0.25 }       // Top-Right corridor corner
+    ];
+
+    const hallNodeMap = {};
+    [1, 2, 3, 4].forEach(f => {
+      hallJunctions.forEach(h => {
+        const id = nodes.length;
+        hallNodeMap[`${h.code}_${f}`] = id;
+        nodes.push({
+          id,
+          name: `Hallway Corner (${h.code})`,
+          floor: f,
+          x: h.x,
+          y: h.y,
+          type: "hall"
         });
       });
     });
 
     const S = (code, f) => stairNodeMap[`${code}_${f}`];
+    const H = (code, f) => hallNodeMap[`${code}_${f}`];
 
-    // Graph edges calibrated to Google Sheets distances + 5 vertical stair shafts
+    // Orthogonal (Rook-only) edges: every edge shares either exact X or exact Y on the same floor
     const edges = [
       // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4 (16.5m per floor)
       ...stairShafts.flatMap(s => [
@@ -142,49 +175,65 @@
         [S(s.code, 3), S(s.code, 4), 16.5]
       ]),
 
-      // Floor 1 horizontal connections
-      [0, 1, 30.0],              // Quadrangle <-> Canteen
-      [0, 2, 22.5],              // Quadrangle <-> Bookstore
-      [2, S("LB", 1), 6.0],      // Bookstore <-> Left-Bottom Stairs
-      [2, S("LT", 1), 24.0],
-      [0, S("CBL", 1), 10.0],    // Quadrangle <-> Center-Bottom Left Stairs
-      [0, S("CT", 1), 15.0],
-      [1, S("CBR", 1), 14.0],
-      [1, S("CT", 1), 14.0],
-      [S("LB", 1), S("CBL", 1), 20.0],
-      [S("CBL", 1), S("CBR", 1), 18.0],
-      [S("LT", 1), S("CT", 1), 28.0],
+      // Base orthogonal hallway grid on all 4 floors
+      ...[1, 2, 3, 4].flatMap(f => [
+        // Bottom outer horizontal corridor (y = 0.75)
+        [S("LB", f), H("LB_BOT", f), 6.0],
+        [H("LB_BOT", f), S("CBL", f), 16.5],
+        [S("CBL", f), S("CBR", f), 18.0],
+        [S("CBR", f), H("RT_BOT", f), 16.0],
 
-      // Floor 2 horizontal connections
-      [5, S("LB", 2), 6.65],     // MPH <-> Left-Bottom Stairs
-      [5, S("LT", 2), 20.0],
-      [3, S("CBL", 2), 10.15],   // Cashier <-> Center-Bottom Left Stairs
-      [3, 4, 26.25],             // Cashier <-> Clinic
-      [3, 5, 54.75],             // Cashier <-> MPH
-      [4, S("CT", 2), 14.0],
-      [4, S("CBR", 2), 16.0],
-      [S("LB", 2), S("CBL", 2), 20.0],
-      [S("CBL", 2), S("CBR", 2), 18.0],
-      [S("LT", 2), S("CT", 2), 28.0],
+        // Left vertical corridor (x = 0.22)
+        [S("LT", f), H("LB_CORNER", f), 20.0],
+        [H("LB_CORNER", f), H("LB_BOT", f), 6.0],
 
-      // Floor 3 horizontal connections (CAS directly beside Center-Bottom Right Stairs)
-      [6, S("CBR", 3), 5.0],     // CAS <-> Center-Bottom Right Stairs (adjacent)
-      [6, S("CBL", 3), 23.0],
-      [S("LB", 3), S("CBL", 3), 20.0],
-      [S("CBL", 3), S("CBR", 3), 18.0],
-      [S("LT", 3), S("LB", 3), 24.0],
-      [S("LT", 3), S("CT", 3), 28.0],
+        // Inner bottom horizontal corridor (y = 0.6667)
+        [H("LB_CORNER", f), H("IN_BL", f), 12.0],
+        [H("IN_BL", f), H("IN_BR", f), 22.0],
 
-      // Floor 4 horizontal connections
-      [8, S("CBR", 4), 26.9],    // OSD <-> Center-Bottom Right Stairs
-      [8, 7, 45.0],              // OSD <-> NEU Hall (parallel on Right Wing)
-      [7, S("CBR", 4), 22.0],    // NEU Hall <-> Center-Bottom Right Stairs
-      [7, S("CT", 4), 24.0],
-      [9, S("LB", 4), 12.0],     // Basketball Court <-> Left-Bottom Stairs
-      [9, S("LT", 4), 12.0],     // Basketball Court <-> Left-Top Stairs
-      [S("LB", 4), S("CBL", 4), 20.0],
-      [S("CBL", 4), S("CBR", 4), 18.0],
-      [S("LT", 4), S("CT", 4), 28.0]
+        // Inner left & right vertical corridors (x = 0.3333 and x = 0.6667)
+        [H("IN_TL", f), H("IN_BL", f), 20.0],
+        [H("IN_TR", f), H("MID_R", f), 12.0],
+        [H("MID_R", f), H("IN_BR", f), 10.0],
+
+        // Top horizontal corridor (y = 0.25)
+        [S("LT", f), H("IN_TL", f), 12.0],
+        [H("IN_TL", f), S("CT", f), 14.0],
+        [S("CT", f), H("IN_TR", f), 14.0],
+        [H("IN_TR", f), H("RT_TOP", f), 12.0],
+
+        // Right vertical corridor (x = 0.78)
+        [H("RT_TOP", f), H("RT_BOT", f), 26.0]
+      ]),
+
+      // Floor 1 Room Connections (orthogonal to corridors)
+      [2, S("LB", 1), 6.0],          // Bookstore (0.22, 0.75) <-> Left-Bottom Stairs (0.14, 0.75) [y=0.75]
+      [2, H("LB_CORNER", 1), 6.0],   // Bookstore (0.22, 0.75) <-> LB_CORNER (0.22, 0.6667) [x=0.22]
+      [2, S("CBL", 1), 16.5],        // Bookstore (0.22, 0.75) <-> CBL Stairs (0.3333, 0.75) [y=0.75]
+      [0, H("IN_TL", 1), 12.0],      // Quadrangle (0.3333, 0.50) <-> IN_TL (0.3333, 0.25) [x=0.3333]
+      [0, H("IN_BL", 1), 10.0],      // Quadrangle (0.3333, 0.50) <-> IN_BL (0.3333, 0.6667) [x=0.3333]
+      [0, 1, 30.0],                  // Quadrangle (0.3333, 0.50) <-> Canteen (0.50, 0.50) [y=0.50]
+      [1, S("CT", 1), 14.0],         // Canteen (0.50, 0.50) <-> Center-Top Stairs (0.50, 0.25) [x=0.50]
+      [1, H("MID_R", 1), 14.0],      // Canteen (0.50, 0.50) <-> MID_R (0.6667, 0.50) [y=0.50]
+
+      // Floor 2 Room Connections (orthogonal to corridors)
+      [5, H("LB_CORNER", 2), 6.65],  // MPH (0.1146, 0.6667) <-> LB_CORNER (0.22, 0.6667) [y=0.6667]
+      [3, H("IN_BL", 2), 0.1],       // Cashier pinned on IN_BL vertex (0.3333, 0.6667)
+      [3, S("CBL", 2), 10.15],       // Cashier (0.3333, 0.6667) <-> CBL Stairs (0.3333, 0.75) [x=0.3333]
+      [4, S("CT", 2), 14.0],         // Clinic (0.50, 0.50) <-> Center-Top Stairs (0.50, 0.25) [x=0.50]
+      [4, H("MID_R", 2), 14.0],      // Clinic (0.50, 0.50) <-> MID_R (0.6667, 0.50) [y=0.50]
+
+      // Floor 3 Room Connections (orthogonal to corridors)
+      [6, S("CBR", 3), 5.0],         // CAS (0.675, 0.75) <-> CBR Stairs (0.62, 0.75) [y=0.75]
+      [6, H("RT_BOT", 3), 11.0],     // CAS (0.675, 0.75) <-> RT_BOT (0.78, 0.75) [y=0.75]
+
+      // Floor 4 Room Connections (orthogonal to corridors)
+      [9, S("LT", 4), 12.0],         // Basketball Court (0.22, 0.50) <-> Left-Top Stairs (0.22, 0.25) [x=0.22]
+      [9, H("LB_CORNER", 4), 12.0],  // Basketball Court (0.22, 0.50) <-> LB_CORNER (0.22, 0.6667) [x=0.22]
+      [7, H("MID_R", 4), 10.0],      // NEU Hall (0.78, 0.50) <-> MID_R (0.6667, 0.50) [y=0.50]
+      [7, H("RT_TOP", 4), 22.0],     // NEU Hall (0.78, 0.50) <-> RT_TOP (0.78, 0.25) [x=0.78]
+      [7, 8, 45.0],                  // NEU Hall (0.78, 0.50) <-> OSD (0.78, 0.75) [x=0.78]
+      [8, H("RT_BOT", 4), 0.1]       // OSD pinned on RT_BOT (0.78, 0.75)
     ];
 
     let currentFloor = 1;
@@ -192,12 +241,12 @@
 
     const startSel = document.getElementById('startNode');
     const endSel = document.getElementById('endNode');
-    nodes.filter(n => !n.isStair).forEach(n => {
+    nodes.filter(n => n.type === "room").forEach(n => {
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
-    startSel.value = 2;
-    endSel.value = 9;
+    startSel.value = 2; // Bookstore
+    endSel.value = 9;   // Basketball Court
 
     function setFloor(f) {
       currentFloor = f;
@@ -241,22 +290,24 @@
       document.getElementById('paceOut').textContent = `~${estPaces} steps`;
       document.getElementById('timeOut').textContent = timeStr;
 
+      // Filter out invisible hallway corners when generating readable turn-by-turn text steps
+      const visibleSteps = activePath.filter(id => nodes[id].type !== "hall");
       const stepList = document.getElementById('stepList');
       stepList.innerHTML = '';
-      if (activePath.length <= 1) {
+      if (visibleSteps.length <= 1) {
         stepList.innerHTML = '<li>You are already at your destination.</li>';
       } else {
         let i = 0;
-        while (i < activePath.length - 1) {
-          const curr = nodes[activePath[i]];
-          const next = nodes[activePath[i + 1]];
+        while (i < visibleSteps.length - 1) {
+          const curr = nodes[visibleSteps[i]];
+          const next = nodes[visibleSteps[i + 1]];
 
-          if (curr.isStair && next.isStair && curr.floor !== next.floor) {
+          if (curr.type === "stair" && next.type === "stair" && curr.floor !== next.floor) {
             let j = i + 1;
-            while (j + 1 < activePath.length && nodes[activePath[j + 1]].isStair && nodes[activePath[j + 1]].floor !== nodes[activePath[j]].floor) {
+            while (j + 1 < visibleSteps.length && nodes[visibleSteps[j + 1]].type === "stair" && nodes[visibleSteps[j + 1]].floor !== nodes[visibleSteps[j]].floor) {
               j++;
             }
-            const destFloor = nodes[activePath[j]].floor;
+            const destFloor = nodes[visibleSteps[j]].floor;
             const dir = destFloor > curr.floor ? "Take stairs up to" : "Take stairs down to";
             const li = document.createElement('li');
             li.textContent = `${dir} Floor ${destFloor}`;
@@ -264,7 +315,7 @@
             i = j;
           } else {
             const li = document.createElement('li');
-            li.textContent = next.isStair ? `Walk to nearest Stairs` : `Walk to ${next.name}`;
+            li.textContent = next.type === "stair" ? `Walk along corridor to nearest Stairs` : `Walk along corridor to ${next.name}`;
             stepList.appendChild(li);
             i++;
           }
@@ -314,10 +365,11 @@
       ctx.textAlign = 'left';
       ctx.fillText(`NEU MAIN BUILDING — FLOOR ${currentFloor}`, 110, 55);
 
-      // Active shortest path segments on current floor
+      // Orthogonal shortest path segments on current floor (90-degree Rook turns)
       if (activePath.length > 1) {
         ctx.strokeStyle = '#FACC15';
         ctx.lineWidth = 5;
+        ctx.lineJoin = 'round';
         ctx.lineCap = 'round';
         ctx.beginPath();
         let drawing = false;
@@ -337,7 +389,7 @@
 
       // Draw all 5 stairwells on current floor
       const activeSet = new Set(activePath);
-      nodes.filter(n => n.floor === currentFloor && n.isStair).forEach(s => {
+      nodes.filter(n => n.floor === currentFloor && n.type === "stair").forEach(s => {
         const px = s.x * W;
         const py = s.y * H;
         const isUsed = activeSet.has(s.id);
@@ -355,7 +407,7 @@
       });
 
       // Draw primary destination rooms on current floor
-      nodes.filter(n => n.floor === currentFloor && !n.isStair).forEach(n => {
+      nodes.filter(n => n.floor === currentFloor && n.type === "room").forEach(n => {
         const px = n.x * W;
         const py = n.y * H;
         const isStart = activePath[0] === n.id;
