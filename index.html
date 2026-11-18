@@ -91,18 +91,18 @@
   </div>
 
   <script>
-    // 10 Primary Destination Rooms (ids 0..9)
+    // 10 Primary Destination Nodes (0..9) matching Google Sheets MMW Research dataset
     const nodes = [
       { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.35, y: 0.50, isStair: false },
-      { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.52, y: 0.50, isStair: false },
-      { id: 2, name: "Node 2: Bookstore / Shop-5", floor: 1, x: 0.14, y: 0.72, isStair: false },
-      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.3333, y: 0.6667, isStair: false },
-      { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.50, y: 0.50, isStair: false },
-      { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.1146, y: 0.6667, isStair: false },
-      { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.76, y: 0.72, isStair: false },
-      { id: 7, name: "Node 7: Main Stairs (Center Lobby)", floor: 3, x: 0.50, y: 0.72, isStair: false },
-      { id: 8, name: "Node 8: Student Discipline (M430)", floor: 4, x: 0.76, y: 0.72, isStair: false },
-      { id: 9, name: "Node 9: NEU Gym / Court", floor: 4, x: 0.22, y: 0.50, isStair: false }
+      { id: 1, name: "Node 1: Canteen", floor: 1, x: 0.52, y: 0.50, isStair: false },
+      { id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.14, y: 0.72, isStair: false },
+      { id: 3, name: "Node 3: Cashier", floor: 2, x: 0.3333, y: 0.6667, isStair: false },
+      { id: 4, name: "Node 4: Clinic", floor: 2, x: 0.50, y: 0.50, isStair: false },
+      { id: 5, name: "Node 5: Multi-Purpose Hall (MPH)", floor: 2, x: 0.1146, y: 0.6667, isStair: false },
+      { id: 6, name: "Node 6: College of Arts & Sciences (CAS)", floor: 3, x: 0.675, y: 0.75, isStair: false },
+      { id: 7, name: "Node 7: NEU Hall", floor: 4, x: 0.78, y: 0.50, isStair: false },
+      { id: 8, name: "Node 8: Office of Student Discipline", floor: 4, x: 0.76, y: 0.72, isStair: false },
+      { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, isStair: false }
     ];
 
     // 5 Vertical Stairwells across all 4 floors:
@@ -115,7 +115,7 @@
       { code: "CBR", label: "Center-Bottom Right Stairs", x: 0.62, y: 0.75 }
     ];
 
-    const stairNodeMap = {}; // e.g., stairNodeMap["LB_1"] -> node id
+    const stairNodeMap = {};
     [1, 2, 3, 4].forEach(f => {
       stairShafts.forEach(s => {
         const id = nodes.length;
@@ -123,7 +123,6 @@
         nodes.push({
           id,
           name: `${s.label} (Floor ${f})`,
-          shortLabel: "STAIRS",
           floor: f,
           x: s.x,
           y: s.y,
@@ -134,57 +133,58 @@
 
     const S = (code, f) => stairNodeMap[`${code}_${f}`];
 
-    // Graph edges: vertical stair connections (10m per floor) + horizontal room-to-stair & room-to-room corridors
+    // Graph edges calibrated to Google Sheets distances + 5 vertical stair shafts
     const edges = [
-      // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4
+      // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4 (16.5m per floor)
       ...stairShafts.flatMap(s => [
-        [S(s.code, 1), S(s.code, 2), 10.0],
-        [S(s.code, 2), S(s.code, 3), 10.0],
-        [S(s.code, 3), S(s.code, 4), 10.0]
+        [S(s.code, 1), S(s.code, 2), 16.5],
+        [S(s.code, 2), S(s.code, 3), 16.5],
+        [S(s.code, 3), S(s.code, 4), 16.5]
       ]),
 
       // Floor 1 horizontal connections
-      [2, S("LB", 1), 4.0],     // Bookstore right next to Left-Bottom Stairs
-      [2, S("LT", 1), 22.0],
-      [2, 0, 18.0],              // Bookstore <-> Quadrangle
-      [0, S("CBL", 1), 11.0],
-      [0, S("CT", 1), 14.0],
-      [0, 1, 16.0],              // Quadrangle <-> Canteen
-      [1, S("CBR", 1), 13.0],
-      [1, S("CT", 1), 13.0],
-      [S("LB", 1), S("CBL", 1), 19.0],
+      [0, 1, 30.0],              // Quadrangle <-> Canteen
+      [0, 2, 22.5],              // Quadrangle <-> Bookstore
+      [2, S("LB", 1), 6.0],      // Bookstore <-> Left-Bottom Stairs
+      [2, S("LT", 1), 24.0],
+      [0, S("CBL", 1), 10.0],    // Quadrangle <-> Center-Bottom Left Stairs
+      [0, S("CT", 1), 15.0],
+      [1, S("CBR", 1), 14.0],
+      [1, S("CT", 1), 14.0],
+      [S("LB", 1), S("CBL", 1), 20.0],
       [S("CBL", 1), S("CBR", 1), 18.0],
-      [S("LT", 1), S("CT", 1), 26.0],
+      [S("LT", 1), S("CT", 1), 28.0],
 
       // Floor 2 horizontal connections
-      [5, S("LB", 2), 6.0],      // Multi-Purpose Hall <-> Left-Bottom Stairs
-      [5, S("LT", 2), 18.0],
-      [5, 3, 17.0],              // MPH <-> Cashier
-      [3, S("CBL", 2), 6.0],     // Cashier right next to Center-Bottom Left Stairs
-      [3, 4, 16.0],              // Cashier <-> Clinic
-      [4, S("CT", 2), 12.0],
-      [4, S("CBR", 2), 14.0],
-      [S("LB", 2), S("CBL", 2), 19.0],
+      [5, S("LB", 2), 6.65],     // MPH <-> Left-Bottom Stairs
+      [5, S("LT", 2), 20.0],
+      [3, S("CBL", 2), 10.15],   // Cashier <-> Center-Bottom Left Stairs
+      [3, 4, 26.25],             // Cashier <-> Clinic
+      [3, 5, 54.75],             // Cashier <-> MPH
+      [4, S("CT", 2), 14.0],
+      [4, S("CBR", 2), 16.0],
+      [S("LB", 2), S("CBL", 2), 20.0],
       [S("CBL", 2), S("CBR", 2), 18.0],
-      [S("LT", 2), S("CT", 2), 26.0],
+      [S("LT", 2), S("CT", 2), 28.0],
 
-      // Floor 3 horizontal connections
-      [7, S("CBL", 3), 8.0],     // Main Stairs Lobby <-> Center-Bottom Left Stairs
-      [7, S("CBR", 3), 8.0],     // Main Stairs Lobby <-> Center-Bottom Right Stairs
-      [6, S("CBR", 3), 11.0],    // CAS Dean's Office (326) <-> Center-Bottom Right Stairs
-      [6, 7, 19.0],
-      [S("LB", 3), S("CBL", 3), 19.0],
+      // Floor 3 horizontal connections (CAS directly beside Center-Bottom Right Stairs)
+      [6, S("CBR", 3), 5.0],     // CAS <-> Center-Bottom Right Stairs (adjacent)
+      [6, S("CBL", 3), 23.0],
+      [S("LB", 3), S("CBL", 3), 20.0],
+      [S("CBL", 3), S("CBR", 3), 18.0],
       [S("LT", 3), S("LB", 3), 24.0],
-      [S("LT", 3), S("CT", 3), 26.0],
+      [S("LT", 3), S("CT", 3), 28.0],
 
       // Floor 4 horizontal connections
-      [9, S("LB", 4), 12.0],     // NEU Gym / Basketball Court <-> Left-Bottom Stairs
-      [9, S("LT", 4), 12.0],     // NEU Gym / Basketball Court <-> Left-Top Stairs
-      [8, S("CBR", 4), 11.0],    // Student Discipline (M430) <-> Center-Bottom Right Stairs
-      [8, 9, 36.0],
-      [S("LB", 4), S("CBL", 4), 19.0],
+      [8, S("CBR", 4), 26.9],    // OSD <-> Center-Bottom Right Stairs
+      [8, 7, 45.0],              // OSD <-> NEU Hall (parallel on Right Wing)
+      [7, S("CBR", 4), 22.0],    // NEU Hall <-> Center-Bottom Right Stairs
+      [7, S("CT", 4), 24.0],
+      [9, S("LB", 4), 12.0],     // Basketball Court <-> Left-Bottom Stairs
+      [9, S("LT", 4), 12.0],     // Basketball Court <-> Left-Top Stairs
+      [S("LB", 4), S("CBL", 4), 20.0],
       [S("CBL", 4), S("CBR", 4), 18.0],
-      [S("LT", 4), S("CT", 4), 26.0]
+      [S("LT", 4), S("CT", 4), 28.0]
     ];
 
     let currentFloor = 1;
@@ -192,12 +192,11 @@
 
     const startSel = document.getElementById('startNode');
     const endSel = document.getElementById('endNode');
-    // Only populate the 10 primary rooms in dropdowns
     nodes.filter(n => !n.isStair).forEach(n => {
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
-    startSel.value = 2; // Default demo: Bookstore -> NEU Gym (uses Left-Bottom Stairs!)
+    startSel.value = 2;
     endSel.value = 9;
 
     function setFloor(f) {
@@ -238,11 +237,10 @@
         ? `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`
         : `${totalSeconds} sec`;
 
-      document.getElementById('distOut').textContent = `${totalMeters.toFixed(1)} m`;
+      document.getElementById('distOut').textContent = `${totalMeters.toFixed(2)} m`;
       document.getElementById('paceOut').textContent = `~${estPaces} steps`;
       document.getElementById('timeOut').textContent = timeStr;
 
-      // Compress consecutive stair floors into clean step-by-step instructions
       const stepList = document.getElementById('stepList');
       stepList.innerHTML = '';
       if (activePath.length <= 1) {
@@ -254,7 +252,6 @@
           const next = nodes[activePath[i + 1]];
 
           if (curr.isStair && next.isStair && curr.floor !== next.floor) {
-            // Group multi-floor stair climb into one clean step
             let j = i + 1;
             while (j + 1 < activePath.length && nodes[activePath[j + 1]].isStair && nodes[activePath[j + 1]].floor !== nodes[activePath[j]].floor) {
               j++;
@@ -338,7 +335,7 @@
         ctx.stroke();
       }
 
-      // Draw all 5 stairwells on current floor (small square icons)
+      // Draw all 5 stairwells on current floor
       const activeSet = new Set(activePath);
       nodes.filter(n => n.floor === currentFloor && n.isStair).forEach(s => {
         const px = s.x * W;
