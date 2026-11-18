@@ -69,7 +69,7 @@
     </div>
 
     <div class="card">
-      <h2>NEU Main Building Floor Schematic</h2>
+      <h2>NEU Main Building Full-Wing Schematic</h2>
       <div class="floor-tabs">
         <button class="tab-btn active" onclick="setFloor(1)" id="tab1">1st Floor (Ground)</button>
         <button class="tab-btn" onclick="setFloor(2)" id="tab2">2nd Floor</button>
@@ -89,18 +89,18 @@
   </div>
 
   <script>
-    // Full-building proportional coordinates (Left Wing = 0.22, Center = 0.50, Right Wing = 0.78)
+    // Calibrated node positions per user wing & vertical mapping
     const nodes = [
-      { id: 0, name: "Node 0: Quadrangle (Center)", floor: 1, x: 0.42, y: 0.52 },
-      { id: 1, name: "Node 1: Main Canteen (Center-Mid)", floor: 1, x: 0.62, y: 0.52 },
-      { id: 2, name: "Node 2: Bookstore (Left Wing)", floor: 1, x: 0.22, y: 0.65 },
-      { id: 3, name: "Node 3: Cashier / Finance (Left Wing)", floor: 2, x: 0.24, y: 0.62 },
-      { id: 4, name: "Node 4: University Clinic M235 (Right Wing)", floor: 2, x: 0.76, y: 0.42 },
-      { id: 5, name: "Node 5: Multi-Purpose Hall (Center)", floor: 2, x: 0.50, y: 0.50 },
-      { id: 6, name: "Node 6: CAS Dean's Office 326 (Right Wing)", floor: 3, x: 0.76, y: 0.55 },
-      { id: 7, name: "Node 7: 3rd Floor Main Stairs (Left Wing)", floor: 3, x: 0.25, y: 0.50 },
-      { id: 8, name: "Node 8: Student Discipline M430 (Left Wing)", floor: 4, x: 0.26, y: 0.38 },
-      { id: 9, name: "Node 9: NEU Gym / Court (Right Wing)", floor: 4, x: 0.74, y: 0.50 }
+      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.25, y: 0.50 },
+      { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.50, y: 0.50 },
+      { id: 2, name: "Node 2: Bookstore / Shop-5", floor: 1, x: 0.24, y: 0.72 },
+      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.14, y: 0.72 },
+      { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.50, y: 0.50 },
+      { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.23, y: 0.72 },
+      { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.76, y: 0.72 },
+      { id: 7, name: "Node 7: 3rd Floor Main Stairs", floor: 3, x: 0.50, y: 0.72 },
+      { id: 8, name: "Node 8: Student Discipline (M430)", floor: 4, x: 0.76, y: 0.72 },
+      { id: 9, name: "Node 9: NEU Gym / Court", floor: 4, x: 0.22, y: 0.50 }
     ];
 
     const edges = [
@@ -187,11 +187,9 @@
       const W = canvas.width;
       const H = canvas.height;
 
-      // Dark architectural blueprint background
       ctx.fillStyle = '#0B192C';
       ctx.fillRect(0, 0, W, H);
 
-      // Subtle architectural grid
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
       ctx.lineWidth = 1;
       for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
@@ -204,7 +202,7 @@
       ctx.fillRect(110, 110, 740, 320);
       ctx.strokeRect(110, 110, 740, 320);
 
-      // Inner Courtyard / Quadrangle Void (Floors 2-4 open atrium, Floor 1 Quadrangle)
+      // Inner Courtyard / Open-to-Below Atrium
       ctx.fillStyle = currentFloor === 1 ? 'rgba(34, 197, 94, 0.10)' : 'rgba(11, 25, 44, 0.75)';
       ctx.fillRect(320, 180, 320, 180);
       ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
@@ -223,7 +221,7 @@
       ctx.textAlign = 'left';
       ctx.fillText(`NEU MAIN BUILDING — FLOOR ${currentFloor}`, 110, 55);
 
-      // Draw all possible graph edges on this floor (faint)
+      // Faint edges on current floor
       edges.forEach(([a, b]) => {
         const na = nodes[a], nb = nodes[b];
         if (na.floor === currentFloor && nb.floor === currentFloor) {
@@ -238,7 +236,7 @@
         }
       });
 
-      // Draw active shortest path on current floor
+      // Active shortest path on current floor
       if (activePath.length > 1) {
         ctx.strokeStyle = '#FACC15';
         ctx.lineWidth = 5;
@@ -259,7 +257,7 @@
         ctx.stroke();
       }
 
-      // Draw nodes on current floor
+      // Nodes on current floor
       nodes.filter(n => n.floor === currentFloor).forEach(n => {
         const px = n.x * W;
         const py = n.y * H;
@@ -274,7 +272,6 @@
         ctx.strokeStyle = '#FFFFFF';
         ctx.stroke();
 
-        // Node label
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
         const label = n.name.replace(/^Node \d+:\s*/, '');
