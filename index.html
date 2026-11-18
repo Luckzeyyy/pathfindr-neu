@@ -84,7 +84,7 @@
         <span><i class="dot" style="background:#22C55E"></i> Start Location</span>
         <span><i class="dot" style="background:#EF4444"></i> Destination</span>
         <span><i class="dot" style="background:#38BDF8"></i> Room / Destination Node</span>
-        <span><i class="sq" style="background:#94A3B8"></i> Stairwell (5 Vertical Shafts)</span>
+        <span><i class="sq" style="background:#94A3B8"></i> Stairwell (7 Symmetric Shafts)</span>
         <span><i class="dot" style="background:#FACC15"></i> Orthogonal Path</span>
       </div>
     </div>
@@ -105,13 +105,18 @@
       { id: 9, name: "Node 9: Basketball Court", floor: 4, x: 0.22, y: 0.50, type: "room" }
     ];
 
-    // 5 Vertical Stairwells aligned to orthogonal corridors
+    // 7 Symmetric Vertical Stairwells across all 4 floors:
+    // Left Wing aligned at x = 0.14 (Top y=0.25, Bottom y=0.75)
+    // Center aligned at CT (0.50, 0.25), CBL (0.3333, 0.75), CBR (0.62, 0.75)
+    // Right Wing aligned at x = 0.84 (Top y=0.25, Bottom y=0.75)
     const stairShafts = [
-      { code: "LT", label: "Left-Top Stairs", x: 0.22, y: 0.25 },
+      { code: "LT", label: "Left-Top Stairs", x: 0.14, y: 0.25 },
       { code: "LB", label: "Left-Bottom Stairs", x: 0.14, y: 0.75 },
       { code: "CT", label: "Center-Top Stairs", x: 0.50, y: 0.25 },
       { code: "CBL", label: "Center-Bottom Left Stairs", x: 0.3333, y: 0.75 },
-      { code: "CBR", label: "Center-Bottom Right Stairs", x: 0.62, y: 0.75 }
+      { code: "CBR", label: "Center-Bottom Right Stairs", x: 0.62, y: 0.75 },
+      { code: "RT", label: "Right-Top Stairs", x: 0.84, y: 0.25 },
+      { code: "RB", label: "Right-Bottom Stairs", x: 0.84, y: 0.75 }
     ];
 
     const stairNodeMap = {};
@@ -132,6 +137,7 @@
 
     // Invisible 90-degree hallway corner waypoints
     const hallJunctions = [
+      { code: "LT_CORNER", x: 0.22, y: 0.25 },
       { code: "LB_CORNER", x: 0.22, y: 0.6667 },
       { code: "LB_BOT", x: 0.22, y: 0.75 },
       { code: "IN_BL", x: 0.3333, y: 0.6667 },
@@ -162,7 +168,7 @@
     const S = (code, f) => stairNodeMap[`${code}_${f}`];
     const H = (code, f) => hallNodeMap[`${code}_${f}`];
 
-    // Orthogonal (Rook-only) edges — paths stay strictly along outer/wing corridors
+    // Orthogonal (Rook-only) edges — paths stay strictly along horizontal & vertical corridors
     const edges = [
       // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4 (16.5m per floor)
       ...stairShafts.flatMap(s => [
@@ -173,14 +179,23 @@
 
       // Base orthogonal hallway grid on all 4 floors
       ...[1, 2, 3, 4].flatMap(f => [
-        // Bottom outer horizontal corridor (y = 0.75)
+        // Bottom horizontal corridor (y = 0.75) from Left-Bottom Stairs to Right-Bottom Stairs
         [S("LB", f), H("LB_BOT", f), 6.0],
         [H("LB_BOT", f), S("CBL", f), 16.5],
         [S("CBL", f), S("CBR", f), 18.0],
         [S("CBR", f), H("RT_BOT", f), 16.0],
+        [H("RT_BOT", f), S("RB", f), 5.0],
+
+        // Top horizontal corridor (y = 0.25) from Left-Top Stairs to Right-Top Stairs
+        [S("LT", f), H("LT_CORNER", f), 6.0],
+        [H("LT_CORNER", f), H("IN_TL", f), 12.0],
+        [H("IN_TL", f), S("CT", f), 14.0],
+        [S("CT", f), H("IN_TR", f), 14.0],
+        [H("IN_TR", f), H("RT_TOP", f), 12.0],
+        [H("RT_TOP", f), S("RT", f), 5.0],
 
         // Left wing vertical corridor (x = 0.22)
-        [S("LT", f), H("LB_CORNER", f), 20.0],
+        [H("LT_CORNER", f), H("LB_CORNER", f), 20.0],
         [H("LB_CORNER", f), H("LB_BOT", f), 6.0],
 
         // Inner bottom horizontal corridor (y = 0.6667)
@@ -190,12 +205,6 @@
         // Inner left & upper-right vertical corridors
         [H("IN_TL", f), H("IN_BL", f), 20.0],
         [H("IN_TR", f), H("MID_R", f), 12.0],
-
-        // Top horizontal corridor (y = 0.25)
-        [S("LT", f), H("IN_TL", f), 12.0],
-        [H("IN_TL", f), S("CT", f), 14.0],
-        [S("CT", f), H("IN_TR", f), 14.0],
-        [H("IN_TR", f), H("RT_TOP", f), 12.0],
 
         // Right wing vertical corridor (x = 0.78)
         [H("RT_TOP", f), H("RT_BOT", f), 26.0]
@@ -218,13 +227,14 @@
       [4, S("CT", 2), 14.0],
       [4, H("MID_R", 2), 14.0],
 
-      // Floor 3 Room Connections
-      [6, S("CBR", 3), 16.0],
+      // Floor 3 Room Connections:
+      // CAS (0.78, 0.75) is right beside Right-Bottom Stairs (0.84, 0.75)
+      [6, S("RB", 3), 5.0],
       [6, H("RT_BOT", 3), 0.1],
 
       // Floor 4 Room Connections:
-      // Court (0.22, 0.50) -> drops down to LB_CORNER (0.22, 0.6667) -> LB_BOT (0.22, 0.75) -> goes right along y=0.75 -> OSD (0.70, 0.75) -> RT_BOT (0.78, 0.75) -> goes up to NEU Hall (0.78, 0.50)
-      [9, S("LT", 4), 12.0],
+      // Court (0.22, 0.50) -> drops down to y=0.75 -> goes right -> OSD (0.70, 0.75) -> RT_BOT (0.78, 0.75) -> goes up to NEU Hall (0.78, 0.50)
+      [9, H("LT_CORNER", 4), 12.0],
       [9, H("LB_CORNER", 4), 12.0],
       [7, H("RT_TOP", 4), 22.0],
       [7, H("RT_BOT", 4), 37.0],
@@ -241,8 +251,8 @@
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
-    startSel.value = 9; // Basketball Court
-    endSel.value = 7;   // NEU Hall
+    startSel.value = 6; // Default demo: CAS (3rd Floor Right) -> NEU Hall (4th Floor Right) via Right-Bottom Stairs!
+    endSel.value = 7;
 
     function setFloor(f) {
       currentFloor = f;
@@ -382,7 +392,7 @@
         ctx.stroke();
       }
 
-      // Draw all 5 stairwells on current floor
+      // Draw all 7 symmetric stairwells on current floor
       const activeSet = new Set(activePath);
       nodes.filter(n => n.floor === currentFloor && n.type === "stair").forEach(s => {
         const px = s.x * W;
