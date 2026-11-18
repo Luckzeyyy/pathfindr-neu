@@ -14,321 +14,257 @@
       --muted: #64748B;
       --border: #CBD5E1;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background-color: var(--bg); color: var(--text); padding: 20px; }
-    
     .header { text-align: center; margin-bottom: 24px; padding: 20px; background: var(--primary); color: white; border-radius: 12px; }
     .header h1 { font-size: 2rem; color: var(--accent); margin-bottom: 6px; }
-
     .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; max-width: 1300px; margin: 0 auto; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-
     .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .card h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
-
-    .form-group { margin-bottom: 16px; }
-    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
-    select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; outline: none; font-size: 0.95rem; }
-
-    .btn { width: 100%; padding: 12px; background: var(--accent); color: var(--primary); font-weight: bold; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
-    .btn:hover { background: #c29d2b; }
-
-    .floor-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-    .floor-btn { flex: 1; padding: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; text-align: center; }
-    .floor-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
-
-    .results-box { background: #F8FAFC; border: 1px dashed var(--accent); border-radius: 8px; padding: 16px; margin-top: 16px; }
-    .metric { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600; }
-    .path-flow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
-    .node-chip { background: var(--primary); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; }
-    .arrow { color: var(--accent); font-weight: bold; }
-
-    .map-container { position: relative; width: 100%; height: 420px; background: #0A192F; border-radius: 8px; overflow: hidden; border: 2px solid var(--primary); }
-    svg { width: 100%; height: 100%; }
-
-    /* SVG Floor Blueprint Styling */
-    .blueprint-wall { fill: none; stroke: #1E293B; stroke-width: 8; }
-    .blueprint-room { fill: #112240; stroke: #233554; stroke-width: 2; }
-    .blueprint-label { fill: #8892B0; font-size: 12px; font-weight: bold; text-anchor: middle; }
-
-    .svg-edge { stroke: #334155; stroke-width: 3; stroke-dasharray: 4; }
-    .svg-edge.active-path { stroke: var(--accent); stroke-width: 5; stroke-dasharray: 0; }
-    
-    .svg-node circle { fill: #002B49; stroke: var(--accent); stroke-width: 2; }
-    .svg-node.selected circle { fill: var(--accent); stroke: #FFF; stroke-width: 3; }
-    .svg-node text { fill: #F8FAFC; font-size: 11px; font-weight: bold; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--muted); }
+    select, button { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; margin-bottom: 14px; }
+    button { background: var(--primary); color: white; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; }
+    button:hover { background: #00406B; }
+    .floor-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tab-btn { flex: 1; padding: 8px; background: #E2E8F0; color: var(--text); border-radius: 6px; font-weight: 600; margin-bottom: 0; }
+    .tab-btn.active { background: var(--primary); color: var(--accent); }
+    .map-wrapper { position: relative; width: 100%; border: 2px solid var(--primary); border-radius: 8px; overflow: hidden; background: #0f172a; }
+    canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+    .stats { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+    .stat-box { flex: 1; min-width: 120px; background: #F8FAFC; padding: 12px; border-radius: 8px; border-left: 4px solid var(--accent); }
+    .stat-box span { display: block; font-size: 0.75rem; color: var(--muted); }
+    .stat-box strong { font-size: 1.15rem; color: var(--primary); }
+    .directions { margin-top: 16px; padding-left: 20px; font-size: 0.9rem; line-height: 1.6; }
+    .calib-box { margin-top: 12px; padding: 10px; background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; font-size: 0.8rem; color: #92400E; }
   </style>
 </head>
 <body>
 
   <div class="header">
     <h1>PathFindr</h1>
-    <p>NEU Main Building Floor Blueprint Navigation System</p>
+    <p>NEU Main Building Indoor Navigation System (Dijkstra Shortest-Path)</p>
   </div>
 
   <div class="grid">
-    <!-- CONTROLS -->
     <div class="card">
-      <h2>Select Route</h2>
-      <div class="form-group">
-        <label for="startNode">Starting Location (Origin):</label>
-        <select id="startNode" onchange="calculateRoute()"></select>
-      </div>
-      <div class="form-group">
-        <label for="endNode">Destination Point:</label>
-        <select id="endNode" onchange="calculateRoute()"></select>
+      <h2>Route Planner</h2>
+      <label for="startNode">Starting Location</label>
+      <select id="startNode"></select>
+
+      <label for="endNode">Destination</label>
+      <select id="endNode"></select>
+
+      <button onclick="calculateRoute()">Find Shortest Path</button>
+
+      <div class="stats">
+        <div class="stat-box"><span>Total Distance</span><strong id="distOut">-- m</strong></div>
+        <div class="stat-box"><span>Est. Pace Count</span><strong id="paceOut">-- steps</strong></div>
       </div>
 
-      <div class="results-box" id="resultsBox">
-        <div class="metric">
-          <span>Total Walking Distance:</span>
-          <span id="distVal" style="color: var(--accent);">0 m</span>
-        </div>
-        <div class="metric">
-          <span>Est. Walk Time:</span>
-          <span id="timeVal">0 mins</span>
-        </div>
-        <label style="margin-top: 10px;">Calculated Path:</label>
-        <div class="path-flow" id="pathFlow"></div>
+      <ol class="directions" id="stepList">
+        <li>Select a starting point and destination to view directions.</li>
+      </ol>
+
+      <div class="calib-box">
+        <strong>Map Pin Tip:</strong> Click anywhere on the blueprint image to view its exact <code>(x, y)</code> percentage coordinates in the console/alert if you want to fine-tune pin positions.
       </div>
     </div>
 
-    <!-- MAP DISPLAY -->
     <div class="card">
-      <h2>NEU Building Map View</h2>
+      <h2>Floor Blueprint Overlay</h2>
       <div class="floor-tabs">
-        <button class="floor-btn active" id="btn-1st" onclick="switchFloor('1st')">1st Floor</button>
-        <button class="floor-btn" id="btn-2nd" onclick="switchFloor('2nd')">2nd Floor</button>
-        <button class="floor-btn" id="btn-3rd" onclick="switchFloor('3rd')">3rd Floor</button>
-        <button class="floor-btn" id="btn-4th" onclick="switchFloor('4th')">4th Floor</button>
+        <button class="tab-btn active" onclick="setFloor(1)" id="tab1">1st Floor</button>
+        <button class="tab-btn" onclick="setFloor(2)" id="tab2">2nd Floor</button>
+        <button class="tab-btn" onclick="setFloor(3)" id="tab3">3rd Floor</button>
+        <button class="tab-btn" onclick="setFloor(4)" id="tab4">4th Floor</button>
       </div>
-
-      <div class="map-container">
-        <svg id="blueprintSvg" viewBox="0 0 700 400">
-          <g id="blueprintGroup"></g>
-          <g id="edgesGroup"></g>
-          <g id="nodesGroup"></g>
-        </svg>
+      <div class="map-wrapper">
+        <canvas id="mapCanvas" width="1000" height="700"></canvas>
       </div>
     </div>
   </div>
 
   <script>
+    // Nodes 0-9 with normalized coordinates (0.0 to 1.0 relative to image width/height)
     const nodes = [
-      // 1st Floor
-      { id: 0, name: "Quadrangle", floor: "1st", x: 150, y: 250 },
-      { id: 1, name: "Canteen", floor: "1st", x: 350, y: 250 },
-      { id: 2, name: "Bookstore", floor: "1st", x: 550, y: 250 },
-
-      // 2nd Floor
-      { id: 3, name: "Cashier", floor: "2nd", x: 150, y: 200 },
-      { id: 4, name: "Clinic", floor: "2nd", x: 350, y: 200 },
-      { id: 5, name: "Multi-Purpose Hall (MPH)", floor: "2nd", x: 550, y: 200 },
-
-      // 3rd Floor
-      { id: 6, name: "College of Arts & Sciences", floor: "3rd", x: 350, y: 180 },
-
-      // 4th Floor
-      { id: 7, name: "Univ Hall", floor: "4th", x: 150, y: 150 },
-      { id: 8, name: "Office of Student Discipline", floor: "4th", x: 350, y: 150 },
-      { id: 9, name: "Basketball Court", floor: "4th", x: 550, y: 150 }
+      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.50, y: 0.45 },
+      { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.78, y: 0.35 },
+      { id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.25, y: 0.55 },
+      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.30, y: 0.60 },
+      { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.68, y: 0.40 },
+      { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.50, y: 0.45 },
+      { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.72, y: 0.55 },
+      { id: 7, name: "Node 7: 3rd Floor Main Stairs", floor: 3, x: 0.32, y: 0.50 },
+      { id: 8, name: "Node 8: Office of Student Discipline (M430)", floor: 4, x: 0.35, y: 0.32 },
+      { id: 9, name: "Node 9: NEU Gym / Basketball Court", floor: 4, x: 0.70, y: 0.48 }
     ];
 
-    // Actual converted distance measurements (meters) based on field survey
+    // Undirected weighted edges (meters based on 0.75m flat / 0.35m stairs pace counts)
     const edges = [
-      { from: 0, to: 1, dist: 30.0 },  // Quad -> Canteen
-      { from: 1, to: 2, dist: 52.5 },  // Canteen -> Bookstore
-      { from: 0, to: 3, dist: 36.65 }, // Quad -> Cashier (Stairs)
-      { from: 3, to: 4, dist: 26.25 }, // Cashier -> Clinic
-      { from: 4, to: 5, dist: 81.0 },  // Clinic -> MPH
-      { from: 2, to: 5, dist: 29.15 }, // Bookstore -> MPH (Rear Stairs)
-      { from: 4, to: 6, dist: 86.15 }, // Clinic -> CAS (Stairs)
-      { from: 6, to: 8, dist: 67.4 },  // CAS -> OSD (Stairs)
-      { from: 7, to: 8, dist: 45.0 },  // Univ Hall -> OSD
-      { from: 8, to: 9, dist: 75.0 }   // OSD -> Basketball Court
+      [0, 1, 24.0], [0, 2, 21.0], [1, 2, 38.5],
+      [0, 3, 18.5], [2, 3, 16.0], [3, 4, 29.0], [3, 5, 19.5], [4, 5, 17.0],
+      [4, 6, 22.5], [5, 7, 15.5], [6, 7, 27.0],
+      [7, 8, 16.5], [6, 9, 25.0], [8, 9, 31.5]
     ];
 
-    let currentActiveFloor = "1st";
-    let activePathEdges = [];
+    let currentFloor = 1;
+    let activePath = [];
+    const floorImages = {};
+    const extensions = ['.jpg', '.png', '.jpeg', '.JPG', '.PNG', '.JPEG'];
 
-    function init() {
-      const sSelect = document.getElementById('startNode');
-      const eSelect = document.getElementById('endNode');
-
-      nodes.forEach(n => {
-        sSelect.innerHTML += `<option value="${n.id}">[${n.floor} Flr] ${n.name}</option>`;
-        eSelect.innerHTML += `<option value="${n.id}">[${n.floor} Flr] ${n.name}</option>`;
-      });
-
-      eSelect.selectedIndex = 7;
-      calculateRoute();
+    // Auto-detect mixed extensions (.jpg / .png / .jpeg) for floor1..floor4
+    function loadFloorImage(floorNum, extIndex = 0) {
+      if (extIndex >= extensions.length) return;
+      const img = new Image();
+      img.src = `floor${floorNum}${extensions[extIndex]}`;
+      img.onload = () => {
+        floorImages[floorNum] = img;
+        if (currentFloor === floorNum) drawMap();
+      };
+      img.onerror = () => loadFloorImage(floorNum, extIndex + 1);
     }
 
-    function switchFloor(floor) {
-      currentActiveFloor = floor;
-      document.querySelectorAll('.floor-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById(`btn-${floor}`).classList.add('active');
-      renderMap();
-    }
+    [1, 2, 3, 4].forEach(f => loadFloorImage(f));
 
-    function renderMap() {
-      renderBlueprintLayout(currentActiveFloor);
-      renderGraph(currentActiveFloor);
-    }
+    // Populate dropdowns
+    const startSel = document.getElementById('startNode');
+    const endSel = document.getElementById('endNode');
+    nodes.forEach(n => {
+      startSel.add(new Option(n.name, n.id));
+      endSel.add(new Option(n.name, n.id));
+    });
+    endSel.value = 9;
 
-    function renderBlueprintLayout(floor) {
-      const bg = document.getElementById('blueprintGroup');
-      bg.innerHTML = '';
-
-      bg.innerHTML += `<rect x="50" y="50" width="600" height="300" class="blueprint-wall" />`;
-
-      if (floor === '1st') {
-        bg.innerHTML += `
-          <rect x="70" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="150" y="120" class="blueprint-label">QUADRANGLE</text>
-
-          <rect x="270" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="350" y="120" class="blueprint-label">CANTEEN</text>
-
-          <rect x="470" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="550" y="120" class="blueprint-label">BOOKSTORE</text>
-        `;
-      } else if (floor === '2nd') {
-        bg.innerHTML += `
-          <rect x="70" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="150" y="120" class="blueprint-label">CASHIER</text>
-
-          <rect x="270" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="350" y="120" class="blueprint-label">CLINIC</text>
-
-          <rect x="470" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="550" y="120" class="blueprint-label">MULTI-PURPOSE HALL</text>
-        `;
-      } else if (floor === '3rd') {
-        bg.innerHTML += `
-          <rect x="150" y="70" width="400" height="260" class="blueprint-room"/>
-          <text x="350" y="120" class="blueprint-label">COLLEGE OF ARTS & SCIENCES</text>
-        `;
-      } else if (floor === '4th') {
-        bg.innerHTML += `
-          <rect x="70" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="150" y="120" class="blueprint-label">UNIV HALL</text>
-
-          <rect x="270" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="350" y="120" class="blueprint-label">STUDENT DISCIPLINE</text>
-
-          <rect x="470" y="70" width="160" height="260" class="blueprint-room"/>
-          <text x="550" y="120" class="blueprint-label">BASKETBALL COURT</text>
-        `;
-      }
-    }
-
-    function renderGraph(floor) {
-      const eg = document.getElementById('edgesGroup');
-      const ng = document.getElementById('nodesGroup');
-      eg.innerHTML = '';
-      ng.innerHTML = '';
-
-      const floorNodes = nodes.filter(n => n.floor === floor);
-
-      edges.forEach(e => {
-        const u = nodes.find(n => n.id === e.from);
-        const v = nodes.find(n => n.id === e.to);
-
-        if (u.floor === floor && v.floor === floor) {
-          const isHL = activePathEdges.some(he => 
-            (he.from === e.from && he.to === e.to) || (he.from === e.to && he.to === e.from)
-          );
-
-          eg.innerHTML += `<line x1="${u.x}" y1="${u.y}" x2="${v.x}" y2="${v.y}" class="svg-edge ${isHL ? 'active-path' : ''}" />`;
-        }
-      });
-
-      floorNodes.forEach(n => {
-        const isPath = activePathEdges.some(pe => pe.from === n.id || pe.to === n.id);
-        ng.innerHTML += `
-          <g class="svg-node ${isPath ? 'selected' : ''}">
-            <circle cx="${n.x}" cy="${n.y}" r="12" />
-            <text x="${n.x}" y="${n.y + 26}" text-anchor="middle">${n.name}</text>
-          </g>
-        `;
-      });
+    function setFloor(f) {
+      currentFloor = f;
+      [1, 2, 3, 4].forEach(i => document.getElementById(`tab${i}`).classList.toggle('active', i === f));
+      drawMap();
     }
 
     function calculateRoute() {
-      const start = parseInt(document.getElementById('startNode').value);
-      const end = parseInt(document.getElementById('endNode').value);
+      const start = parseInt(startSel.value);
+      const end = parseInt(endSel.value);
+      const dist = Array(nodes.length).fill(Infinity);
+      const prev = Array(nodes.length).fill(null);
+      const visited = new Set();
+      dist[start] = 0;
 
-      let distances = {};
-      let previous = {};
-      let unvisited = new Set();
-
-      nodes.forEach(n => {
-        distances[n.id] = Infinity;
-        previous[n.id] = null;
-        unvisited.add(n.id);
-      });
-
-      distances[start] = 0;
-
-      while (unvisited.size > 0) {
-        let curr = null;
-        let minD = Infinity;
-
-        unvisited.forEach(id => {
-          if (distances[id] < minD) {
-            minD = distances[id];
-            curr = id;
-          }
-        });
-
-        if (curr === null || curr === end) break;
-        unvisited.delete(curr);
-
-        const neighbors = edges.filter(e => e.from === curr || e.to === curr);
-        neighbors.forEach(e => {
-          const neighborId = e.from === curr ? e.to : e.from;
-          if (unvisited.has(neighborId)) {
-            const alt = distances[curr] + e.dist;
-            if (alt < distances[neighborId]) {
-              distances[neighborId] = alt;
-              previous[neighborId] = curr;
-            }
-          }
-        });
-      }
-
-      let path = [];
-      let curr = end;
-      while (curr !== null) {
-        path.unshift(curr);
-        curr = previous[curr];
-      }
-
-      const totalMeters = distances[end].toFixed(1);
-      document.getElementById('distVal').textContent = `${totalMeters} meters`;
-      const mins = Math.ceil((distances[end] / 1.2) / 60);
-      document.getElementById('timeVal').textContent = `~${mins} min`;
-
-      const pathFlow = document.getElementById('pathFlow');
-      pathFlow.innerHTML = '';
-      activePathEdges = [];
-
-      path.forEach((nodeId, idx) => {
-        const n = nodes.find(item => item.id === nodeId);
-        pathFlow.innerHTML += `<span class="node-chip">${n.name} (${n.floor})</span>`;
-        if (idx < path.length - 1) {
-          pathFlow.innerHTML += `<span class="arrow">➔</span>`;
-          activePathEdges.push({ from: nodeId, to: path[idx + 1] });
+      while (visited.size < nodes.length) {
+        let u = -1;
+        for (let i = 0; i < nodes.length; i++) {
+          if (!visited.has(i) && (u === -1 || dist[i] < dist[u])) u = i;
         }
-      });
+        if (u === -1 || dist[u] === Infinity) break;
+        visited.add(u);
 
-      const startFloor = nodes.find(n => n.id === start).floor;
-      switchFloor(startFloor);
+        edges.forEach(([a, b, w]) => {
+          if (a === u && dist[u] + w < dist[b]) { dist[b] = dist[u] + w; prev[b] = u; }
+          if (b === u && dist[u] + w < dist[a]) { dist[a] = dist[u] + w; prev[a] = u; }
+        });
+      }
+
+      activePath = [];
+      for (let at = end; at !== null; at = prev[at]) activePath.unshift(at);
+
+      document.getElementById('distOut').textContent = `${dist[end].toFixed(1)} m`;
+      document.getElementById('paceOut').textContent = `~${Math.round(dist[end] / 0.75)} paces`;
+
+      const stepList = document.getElementById('stepList');
+      stepList.innerHTML = '';
+      if (activePath.length <= 1) {
+        stepList.innerHTML = '<li>You are already at your destination.</li>';
+      } else {
+        for (let i = 0; i < activePath.length - 1; i++) {
+          const from = nodes[activePath[i]];
+          const to = nodes[activePath[i + 1]];
+          const action = from.floor !== to.floor ? `Take stairs to Floor ${to.floor}: ` : `Walk to `;
+          const li = document.createElement('li');
+          li.textContent = `${action}${to.name}`;
+          stepList.appendChild(li);
+        }
+      }
+
+      setFloor(nodes[start].floor);
     }
 
-    window.onload = init;
+    function drawMap() {
+      const canvas = document.getElementById('mapCanvas');
+      const ctx = canvas.getContext('2d');
+      const img = floorImages[currentFloor];
+
+      if (img) {
+        canvas.width = img.naturalWidth || 1000;
+        canvas.height = img.naturalHeight || 700;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Subtle dark tint so glowing path lines stand out clearly
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '20px sans-serif';
+        ctx.fillText(`Loading Floor ${currentFloor} Blueprint...`, 40, 60);
+      }
+
+      // Draw active path segments on current floor
+      if (activePath.length > 1) {
+        ctx.strokeStyle = '#FACC15';
+        ctx.lineWidth = Math.max(5, canvas.width * 0.006);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        let drawing = false;
+        for (let i = 0; i < activePath.length; i++) {
+          const n = nodes[activePath[i]];
+          if (n.floor === currentFloor) {
+            const px = n.x * canvas.width;
+            const py = n.y * canvas.height;
+            if (!drawing) { ctx.moveTo(px, py); drawing = true; }
+            else { ctx.lineTo(px, py); }
+          } else {
+            drawing = false;
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Draw nodes on current floor
+      nodes.filter(n => n.floor === currentFloor).forEach(n => {
+        const px = n.x * canvas.width;
+        const py = n.y * canvas.height;
+        const isStart = activePath[0] === n.id;
+        const isEnd = activePath[activePath.length - 1] === n.id;
+        const radius = Math.max(10, canvas.width * 0.012);
+
+        ctx.beginPath();
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+        ctx.fillStyle = isStart ? '#22C55E' : isEnd ? '#EF4444' : '#002B49';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.stroke();
+
+        // Label badge
+        ctx.font = `bold ${Math.max(13, Math.round(canvas.width * 0.014))}px sans-serif`;
+        const label = n.name.replace(/^Node \d+:\s*/, '');
+        const textW = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(0, 43, 73, 0.88)';
+        ctx.fillRect(px - textW / 2 - 6, py - radius - 26, textW + 12, 22);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(label, px - textW / 2, py - radius - 10);
+      });
+    }
+
+    // Click helper to get exact (x, y) ratio for pin calibration
+    document.getElementById('mapCanvas').addEventListener('click', (e) => {
+      const rect = e.target.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width).toFixed(2);
+      const y = ((e.clientY - rect.top) / rect.height).toFixed(2);
+      alert(`Floor ${currentFloor} Coordinates:\nx: ${x}, y: ${y}`);
+    });
+
+    drawMap();
   </script>
 </body>
 </html>
