@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PathFindr - NEU Floor Blueprint Navigation</title>
+  <title>PathFindr - NEU Main Building Indoor Navigation</title>
   <style>
     :root {
       --primary: #002B49;
@@ -18,7 +18,7 @@
     body { background-color: var(--bg); color: var(--text); padding: 20px; }
     .header { text-align: center; margin-bottom: 24px; padding: 20px; background: var(--primary); color: white; border-radius: 12px; }
     .header h1 { font-size: 2rem; color: var(--accent); margin-bottom: 6px; }
-    .grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; max-width: 1300px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; max-width: 1280px; margin: 0 auto; }
     @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
     .card { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .card h2 { font-size: 1.2rem; color: var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 6px; }
@@ -27,76 +27,80 @@
     button { background: var(--primary); color: white; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; }
     button:hover { background: #00406B; }
     .floor-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-    .tab-btn { flex: 1; padding: 8px; background: #E2E8F0; color: var(--text); border-radius: 6px; font-weight: 600; margin-bottom: 0; }
+    .tab-btn { flex: 1; padding: 9px; background: #E2E8F0; color: var(--text); border-radius: 6px; font-weight: 600; margin-bottom: 0; }
     .tab-btn.active { background: var(--primary); color: var(--accent); }
-    .map-wrapper { position: relative; width: 100%; border: 2px solid var(--primary); border-radius: 8px; overflow: hidden; background: #0f172a; }
-    canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
-    .stats { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
-    .stat-box { flex: 1; min-width: 120px; background: #F8FAFC; padding: 12px; border-radius: 8px; border-left: 4px solid var(--accent); }
-    .stat-box span { display: block; font-size: 0.75rem; color: var(--muted); }
-    .stat-box strong { font-size: 1.15rem; color: var(--primary); }
-    .directions { margin-top: 16px; padding-left: 20px; font-size: 0.9rem; line-height: 1.6; }
-    .calib-box { margin-top: 12px; padding: 10px; background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; font-size: 0.8rem; color: #92400E; }
+    .map-wrapper { position: relative; width: 100%; border: 2px solid var(--primary); border-radius: 8px; overflow: hidden; background: #0B192C; }
+    canvas { display: block; width: 100%; height: auto; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+    .stat-box { background: #F8FAFC; padding: 10px; border-radius: 8px; border-left: 4px solid var(--accent); }
+    .stat-box span { display: block; font-size: 0.72rem; color: var(--muted); }
+    .stat-box strong { font-size: 1.05rem; color: var(--primary); }
+    .directions { margin-top: 16px; padding-left: 20px; font-size: 0.9rem; line-height: 1.65; }
+    .legend { display: flex; gap: 16px; margin-top: 12px; font-size: 0.82rem; color: var(--muted); flex-wrap: wrap; }
+    .legend span { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
   </style>
 </head>
 <body>
 
   <div class="header">
     <h1>PathFindr</h1>
-    <p>NEU Main Building Indoor Navigation System (Dijkstra Shortest-Path)</p>
+    <p>NEU Main Building Indoor Navigation System (Graph Theory &amp; Dijkstra Shortest-Path)</p>
   </div>
 
   <div class="grid">
     <div class="card">
       <h2>Route Planner</h2>
       <label for="startNode">Starting Location</label>
-      <select id="startNode"></select>
+      <select id="startNode" onchange="calculateRoute()"></select>
 
       <label for="endNode">Destination</label>
-      <select id="endNode"></select>
+      <select id="endNode" onchange="calculateRoute()"></select>
 
       <button onclick="calculateRoute()">Find Shortest Path</button>
 
       <div class="stats">
-        <div class="stat-box"><span>Total Distance</span><strong id="distOut">-- m</strong></div>
-        <div class="stat-box"><span>Est. Pace Count</span><strong id="paceOut">-- steps</strong></div>
+        <div class="stat-box"><span>Distance</span><strong id="distOut">0.0 m</strong></div>
+        <div class="stat-box"><span>Est. Paces</span><strong id="paceOut">0 steps</strong></div>
+        <div class="stat-box"><span>Est. Time</span><strong id="timeOut">0 sec</strong></div>
       </div>
 
-      <ol class="directions" id="stepList">
-        <li>Select a starting point and destination to view directions.</li>
-      </ol>
-
-      <div class="calib-box">
-        <strong>Map Pin Tip:</strong> Click anywhere on the blueprint image to view its exact <code>(x, y)</code> coordinates so we can align every room pin accurately.
-      </div>
+      <ol class="directions" id="stepList"></ol>
     </div>
 
     <div class="card">
-      <h2>Floor Blueprint Overlay</h2>
+      <h2>NEU Main Building Floor Schematic</h2>
       <div class="floor-tabs">
-        <button class="tab-btn active" onclick="setFloor(1)" id="tab1">1st Floor</button>
+        <button class="tab-btn active" onclick="setFloor(1)" id="tab1">1st Floor (Ground)</button>
         <button class="tab-btn" onclick="setFloor(2)" id="tab2">2nd Floor</button>
         <button class="tab-btn" onclick="setFloor(3)" id="tab3">3rd Floor</button>
         <button class="tab-btn" onclick="setFloor(4)" id="tab4">4th Floor</button>
       </div>
       <div class="map-wrapper">
-        <canvas id="mapCanvas" width="1000" height="700"></canvas>
+        <canvas id="mapCanvas" width="960" height="540"></canvas>
+      </div>
+      <div class="legend">
+        <span><i class="dot" style="background:#22C55E"></i> Start Location</span>
+        <span><i class="dot" style="background:#EF4444"></i> Destination</span>
+        <span><i class="dot" style="background:#38BDF8"></i> Waypoint / Room</span>
+        <span><i class="dot" style="background:#FACC15"></i> Shortest Path</span>
       </div>
     </div>
   </div>
 
   <script>
+    // Full-building proportional coordinates (Left Wing = 0.22, Center = 0.50, Right Wing = 0.78)
     const nodes = [
-      { id: 0, name: "Node 0: Quadrangle", floor: 1, x: 0.50, y: 0.45 },
-      { id: 1, name: "Node 1: Main Canteen", floor: 1, x: 0.78, y: 0.35 },
-      { id: 2, name: "Node 2: Bookstore", floor: 1, x: 0.25, y: 0.55 },
-      { id: 3, name: "Node 3: Cashier / Finance", floor: 2, x: 0.30, y: 0.60 },
-      { id: 4, name: "Node 4: University Clinic (M235)", floor: 2, x: 0.68, y: 0.40 },
-      { id: 5, name: "Node 5: Multi-Purpose Hall", floor: 2, x: 0.50, y: 0.45 },
-      { id: 6, name: "Node 6: CAS Dean's Office (326)", floor: 3, x: 0.72, y: 0.55 },
-      { id: 7, name: "Node 7: 3rd Floor Main Stairs", floor: 3, x: 0.32, y: 0.50 },
-      { id: 8, name: "Node 8: Office of Student Discipline (M430)", floor: 4, x: 0.35, y: 0.32 },
-      { id: 9, name: "Node 9: NEU Gym / Basketball Court", floor: 4, x: 0.70, y: 0.48 }
+      { id: 0, name: "Node 0: Quadrangle (Center)", floor: 1, x: 0.42, y: 0.52 },
+      { id: 1, name: "Node 1: Main Canteen (Center-Mid)", floor: 1, x: 0.62, y: 0.52 },
+      { id: 2, name: "Node 2: Bookstore (Left Wing)", floor: 1, x: 0.22, y: 0.65 },
+      { id: 3, name: "Node 3: Cashier / Finance (Left Wing)", floor: 2, x: 0.24, y: 0.62 },
+      { id: 4, name: "Node 4: University Clinic M235 (Right Wing)", floor: 2, x: 0.76, y: 0.42 },
+      { id: 5, name: "Node 5: Multi-Purpose Hall (Center)", floor: 2, x: 0.50, y: 0.50 },
+      { id: 6, name: "Node 6: CAS Dean's Office 326 (Right Wing)", floor: 3, x: 0.76, y: 0.55 },
+      { id: 7, name: "Node 7: 3rd Floor Main Stairs (Left Wing)", floor: 3, x: 0.25, y: 0.50 },
+      { id: 8, name: "Node 8: Student Discipline M430 (Left Wing)", floor: 4, x: 0.26, y: 0.38 },
+      { id: 9, name: "Node 9: NEU Gym / Court (Right Wing)", floor: 4, x: 0.74, y: 0.50 }
     ];
 
     const edges = [
@@ -108,22 +112,6 @@
 
     let currentFloor = 1;
     let activePath = [];
-    const floorImages = {};
-    const floorFiles = {
-      1: 'Floor1.png.jpg',
-      2: 'Floor2.png.jpg',
-      3: 'Floor3.png.jpg',
-      4: 'Floor4.png.jpg'
-    };
-
-    [1, 2, 3, 4].forEach(f => {
-      const img = new Image();
-      img.src = floorFiles[f];
-      img.onload = () => {
-        floorImages[f] = img;
-        if (currentFloor === f) drawMap();
-      };
-    });
 
     const startSel = document.getElementById('startNode');
     const endSel = document.getElementById('endNode');
@@ -164,8 +152,16 @@
       activePath = [];
       for (let at = end; at !== null; at = prev[at]) activePath.unshift(at);
 
-      document.getElementById('distOut').textContent = `${dist[end].toFixed(1)} m`;
-      document.getElementById('paceOut').textContent = `~${Math.round(dist[end] / 0.75)} paces`;
+      const totalMeters = dist[end];
+      const estPaces = Math.round(totalMeters / 0.75);
+      const totalSeconds = Math.round(totalMeters / 1.2);
+      const timeStr = totalSeconds >= 60
+        ? `${Math.floor(totalSeconds / 60)}m ${totalSeconds % 60}s`
+        : `${totalSeconds} sec`;
+
+      document.getElementById('distOut').textContent = `${totalMeters.toFixed(1)} m`;
+      document.getElementById('paceOut').textContent = `~${estPaces} steps`;
+      document.getElementById('timeOut').textContent = timeStr;
 
       const stepList = document.getElementById('stepList');
       stepList.innerHTML = '';
@@ -188,33 +184,72 @@
     function drawMap() {
       const canvas = document.getElementById('mapCanvas');
       const ctx = canvas.getContext('2d');
-      const img = floorImages[currentFloor];
+      const W = canvas.width;
+      const H = canvas.height;
 
-      if (img) {
-        canvas.width = img.naturalWidth || 1000;
-        canvas.height = img.naturalHeight || 700;
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      } else {
-        ctx.fillStyle = '#0f172a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '20px sans-serif';
-        ctx.fillText(`Loading Floor ${currentFloor} Blueprint...`, 40, 60);
-      }
+      // Dark architectural blueprint background
+      ctx.fillStyle = '#0B192C';
+      ctx.fillRect(0, 0, W, H);
 
+      // Subtle architectural grid
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 30) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 0; y < H; y += 30) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+      // Main Building Outline (Left Wing, Center, Right Wing)
+      ctx.strokeStyle = '#38BDF8';
+      ctx.lineWidth = 2.5;
+      ctx.fillStyle = 'rgba(30, 58, 95, 0.35)';
+      ctx.fillRect(110, 110, 740, 320);
+      ctx.strokeRect(110, 110, 740, 320);
+
+      // Inner Courtyard / Quadrangle Void (Floors 2-4 open atrium, Floor 1 Quadrangle)
+      ctx.fillStyle = currentFloor === 1 ? 'rgba(34, 197, 94, 0.10)' : 'rgba(11, 25, 44, 0.75)';
+      ctx.fillRect(320, 180, 320, 180);
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+      ctx.strokeRect(320, 180, 320, 180);
+
+      // Wing & Zone Labels
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.45)';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('LEFT WING', 215, 95);
+      ctx.fillText('CENTER / ATRIUM', 480, 95);
+      ctx.fillText('RIGHT WING', 745, 95);
+
+      ctx.fillStyle = '#D4AF37';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`NEU MAIN BUILDING — FLOOR ${currentFloor}`, 110, 55);
+
+      // Draw all possible graph edges on this floor (faint)
+      edges.forEach(([a, b]) => {
+        const na = nodes[a], nb = nodes[b];
+        if (na.floor === currentFloor && nb.floor === currentFloor) {
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 6]);
+          ctx.beginPath();
+          ctx.moveTo(na.x * W, na.y * H);
+          ctx.lineTo(nb.x * W, nb.y * H);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      });
+
+      // Draw active shortest path on current floor
       if (activePath.length > 1) {
         ctx.strokeStyle = '#FACC15';
-        ctx.lineWidth = Math.max(5, canvas.width * 0.006);
+        ctx.lineWidth = 5;
         ctx.lineCap = 'round';
         ctx.beginPath();
         let drawing = false;
         for (let i = 0; i < activePath.length; i++) {
           const n = nodes[activePath[i]];
           if (n.floor === currentFloor) {
-            const px = n.x * canvas.width;
-            const py = n.y * canvas.height;
+            const px = n.x * W;
+            const py = n.y * H;
             if (!drawing) { ctx.moveTo(px, py); drawing = true; }
             else { ctx.lineTo(px, py); }
           } else {
@@ -224,39 +259,34 @@
         ctx.stroke();
       }
 
+      // Draw nodes on current floor
       nodes.filter(n => n.floor === currentFloor).forEach(n => {
-        const px = n.x * canvas.width;
-        const py = n.y * canvas.height;
+        const px = n.x * W;
+        const py = n.y * H;
         const isStart = activePath[0] === n.id;
         const isEnd = activePath[activePath.length - 1] === n.id;
-        const radius = Math.max(10, canvas.width * 0.012);
 
         ctx.beginPath();
-        ctx.arc(px, py, radius, 0, Math.PI * 2);
-        ctx.fillStyle = isStart ? '#22C55E' : isEnd ? '#EF4444' : '#002B49';
+        ctx.arc(px, py, 11, 0, Math.PI * 2);
+        ctx.fillStyle = isStart ? '#22C55E' : isEnd ? '#EF4444' : '#38BDF8';
         ctx.fill();
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.strokeStyle = '#FFFFFF';
         ctx.stroke();
 
-        ctx.font = `bold ${Math.max(13, Math.round(canvas.width * 0.014))}px sans-serif`;
+        // Node label
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
         const label = n.name.replace(/^Node \d+:\s*/, '');
         const textW = ctx.measureText(label).width;
-        ctx.fillStyle = 'rgba(0, 43, 73, 0.88)';
-        ctx.fillRect(px - textW / 2 - 6, py - radius - 26, textW + 12, 22);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.fillRect(px - textW / 2 - 8, py - 34, textW + 16, 20);
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(label, px - textW / 2, py - radius - 10);
+        ctx.fillText(label, px, py - 20);
       });
     }
 
-    document.getElementById('mapCanvas').addEventListener('click', (e) => {
-      const rect = e.target.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width).toFixed(2);
-      const y = ((e.clientY - rect.top) / rect.height).toFixed(2);
-      alert(`Floor ${currentFloor} Coordinates:\nx: ${x}, y: ${y}`);
-    });
-
-    drawMap();
+    calculateRoute();
   </script>
 </body>
 </html>
