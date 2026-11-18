@@ -162,7 +162,7 @@
     const S = (code, f) => stairNodeMap[`${code}_${f}`];
     const H = (code, f) => hallNodeMap[`${code}_${f}`];
 
-    // Orthogonal (Rook-only) edges
+    // Orthogonal (Rook-only) edges — paths stay strictly along outer/wing corridors
     const edges = [
       // Vertical stair shafts across Floors 1 -> 2 -> 3 -> 4 (16.5m per floor)
       ...stairShafts.flatMap(s => [
@@ -173,26 +173,31 @@
 
       // Base orthogonal hallway grid on all 4 floors
       ...[1, 2, 3, 4].flatMap(f => [
+        // Bottom outer horizontal corridor (y = 0.75)
         [S("LB", f), H("LB_BOT", f), 6.0],
         [H("LB_BOT", f), S("CBL", f), 16.5],
         [S("CBL", f), S("CBR", f), 18.0],
         [S("CBR", f), H("RT_BOT", f), 16.0],
 
+        // Left wing vertical corridor (x = 0.22)
         [S("LT", f), H("LB_CORNER", f), 20.0],
         [H("LB_CORNER", f), H("LB_BOT", f), 6.0],
 
+        // Inner bottom horizontal corridor (y = 0.6667)
         [H("LB_CORNER", f), H("IN_BL", f), 12.0],
         [H("IN_BL", f), H("IN_BR", f), 22.0],
 
+        // Inner left & upper-right vertical corridors
         [H("IN_TL", f), H("IN_BL", f), 20.0],
         [H("IN_TR", f), H("MID_R", f), 12.0],
-        [H("MID_R", f), H("IN_BR", f), 10.0],
 
+        // Top horizontal corridor (y = 0.25)
         [S("LT", f), H("IN_TL", f), 12.0],
         [H("IN_TL", f), S("CT", f), 14.0],
         [S("CT", f), H("IN_TR", f), 14.0],
         [H("IN_TR", f), H("RT_TOP", f), 12.0],
 
+        // Right wing vertical corridor (x = 0.78)
         [H("RT_TOP", f), H("RT_BOT", f), 26.0]
       ]),
 
@@ -213,14 +218,14 @@
       [4, S("CT", 2), 14.0],
       [4, H("MID_R", 2), 14.0],
 
-      // Floor 3 Room Connections (CAS on right-most wing x: 0.78, y: 0.75 parallel to NEU Hall)
-      [6, S("CBR", 3), 16.0],        // CAS (0.78, 0.75) <-> CBR Stairs (0.62, 0.75) [y=0.75]
-      [6, H("RT_BOT", 3), 0.1],       // CAS pinned on right-most bottom corridor corner (0.78, 0.75)
+      // Floor 3 Room Connections
+      [6, S("CBR", 3), 16.0],
+      [6, H("RT_BOT", 3), 0.1],
 
-      // Floor 4 Room Connections
+      // Floor 4 Room Connections:
+      // Court (0.22, 0.50) -> drops down to LB_CORNER (0.22, 0.6667) -> LB_BOT (0.22, 0.75) -> goes right along y=0.75 -> OSD (0.70, 0.75) -> RT_BOT (0.78, 0.75) -> goes up to NEU Hall (0.78, 0.50)
       [9, S("LT", 4), 12.0],
       [9, H("LB_CORNER", 4), 12.0],
-      [7, H("MID_R", 4), 10.0],
       [7, H("RT_TOP", 4), 22.0],
       [7, H("RT_BOT", 4), 37.0],
       [8, S("CBR", 4), 8.0],
@@ -236,8 +241,8 @@
       startSel.add(new Option(n.name, n.id));
       endSel.add(new Option(n.name, n.id));
     });
-    startSel.value = 2;
-    endSel.value = 9;
+    startSel.value = 9; // Basketball Court
+    endSel.value = 7;   // NEU Hall
 
     function setFloor(f) {
       currentFloor = f;
